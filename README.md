@@ -1,2 +1,2 @@
 # ZohoCommerce
-Zoho commerce and Zoho Creator Custom Code 
+Zoho commerce and Zoho Creator Custom Code Management.
