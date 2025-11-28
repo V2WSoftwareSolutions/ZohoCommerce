@@ -1,0 +1,8 @@
+if(input.Client_Secret != null && input.Client_Secret != "")
+{
+	input.Scope_field = "ZohoCommerce.fullaccess.ALL";
+}
+else
+{
+	input.Scope_field = null;
+}

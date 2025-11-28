@@ -1,0 +1,18 @@
+
+// Define the order ID and API endpoint
+order_id = "00000763";
+url = "https://app.flourishsoftware.com/external/api/v1/outbound-orders/" + order_id;
+// Set up the headers
+externalHeaders = Map();
+externalHeaders.put("FacilityID","6780865a684995000711f075");
+externalHeaders.put("x-api-key","02af152f-36c7-4333-95b0-66aecf63d836");
+externalHeaders.put("Content-Type","application/json");
+// Invoke the GET request
+externalResponse = invokeurl
+[
+	url :url
+	type :GET
+	headers:externalHeaders
+];
+// Display the response
+info "Flourish Order Info: " + externalResponse;

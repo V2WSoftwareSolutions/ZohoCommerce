@@ -1,0 +1,61 @@
+<script>
+(function () {
+
+  function hideHasVariantAndCaseQty() {
+    // Find every info row under each cart item
+    var allLis = document.querySelectorAll(".theme-cart-item-info ul li");
+    if (!allLis.length) return;
+
+    allLis.forEach(function (li) {
+      var firstNode = li.childNodes[0];
+      var labelText = "";
+
+      if (firstNode && firstNode.textContent) {
+        labelText = firstNode.textContent.trim().toLowerCase();
+      }
+
+      // Look for the "Has variants:" label
+      if (labelText.indexOf("has variants") === 0) {
+        // Get its value (true / false)
+        var span = li.querySelector("span");
+        var value = span ? span.textContent.trim().toLowerCase() : "";
+
+        // Always hide the "Has variants" row
+        li.style.display = "none";
+
+        // If value is false, hide the "Case Quantity" row in the same <ul>
+        if (value === "false") {
+          var ul = li.parentElement;
+          if (ul) {
+            var siblings = ul.querySelectorAll("li");
+            siblings.forEach(function (sLi) {
+              var sFirst = sLi.childNodes[0];
+              var sText = "";
+              if (sFirst && sFirst.textContent) {
+                sText = sFirst.textContent.trim().toLowerCase();
+              }
+              if (sText.indexOf("case quantity") === 0) {
+                sLi.style.display = "none";
+              }
+            });
+          }
+        }
+      }
+    });
+  }
+
+  // Run on load
+  document.addEventListener("DOMContentLoaded", hideHasVariantAndCaseQty);
+  window.addEventListener("load", hideHasVariantAndCaseQty);
+
+  // Run again if cart DOM changes (qty change, item added/removed, etc.)
+  var observer = new MutationObserver(function () {
+    hideHasVariantAndCaseQty();
+  });
+
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true
+  });
+})();
+</script>

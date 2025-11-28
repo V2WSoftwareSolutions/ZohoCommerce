@@ -1,0 +1,473 @@
+settings = Flourish_Settings[ID != 0];
+// Get Commerce API settings
+auth_header = input.Auth_header;
+apiUrl = input.Api_Url;
+// Build full API endpoint
+uom_api = apiUrl + "/external/api/v1/uoms";
+// Try to find the first Flourish_Settings record
+existingRecord = Flourish_Settings[ID != 0];
+// fetch the only record
+// Create new record only if none exists
+if(existingRecord == null)
+{
+	newRecord = insert into Flourish_Settings
+	[
+		Api_Url=apiUrl
+		Status="Created. Testing connection..."
+		Auth_header=auth_header
+		Last_Checked=zoho.currenttime
+		Added_User=zoho.loginuser
+	];
+	existingRecord = newRecord;
+}
+else
+{
+	existingRecord.Api_Url=apiUrl;
+	existingRecord.Status="Updating. Testing connection...";
+	existingRecord.Auth_header=auth_header;
+	existingRecord.Last_Checked=zoho.currenttime;
+}
+// Proceed to test the API connection
+if(auth_header != null && apiUrl != null)
+{
+	authString = auth_header;
+	encodedAuth = zoho.encryption.base64Encode(authString);
+	headers = Map();
+	headers.put("x-api-key",authString);
+	headers.put("Content-Type","application/json");
+	response = invokeurl
+	[
+		url :uom_api
+		type :GET
+		headers:headers
+	];
+	responseStatus = response.get("status");
+	if(responseStatus == 200)
+	{
+		existingRecord.Status="✅ Success: Connected to Flourish API";
+		existingRecord.Last_Checked=zoho.currenttime;
+	}
+	else
+	{
+		existingRecord.Status="❌ Error: No response from API server";
+		existingRecord.Last_Checked=zoho.currenttime;
+	}
+}
+else
+{
+	existingRecord.Status="❌ Error: Missing required fields";
+	existingRecord.Last_Checked=zoho.currenttime;
+}
+if(settings != null)
+{
+	// Flourish API Configuration
+	baseUrl = input.Api_Url;
+	limit = 50;
+	brandParams = "";
+	brandIds = input.Brand;
+	facility = input.Facility;
+	for each  brandId in brandIds
+	{
+		brandName = brandId;
+		if(brandName != null)
+		{
+			brandParams = brandParams + "&brand_name=" + encodeUrl(brandName);
+		}
+	}
+	headers = Map();
+	auth_header = input.Auth_header;
+	headers.put("x-api-key",auth_header);
+	facilityurl = baseUrl + "/external/api/v1/facilities?name=" + facility;
+	response = invokeurl
+	[
+		url :facilityurl
+		type :GET
+		headers:headers
+	];
+	facility_data = response.get("data");
+	facility_id = facility_data.get(0).get("id");
+	headers_with_facility = Map();
+	headers_with_facility.put("x-api-key",auth_header);
+	headers_with_facility.put("FacilityID",facility_id);
+	// Create a list of batch numbers (0 to 49 = 50 batches max)
+	dummy_pages = "".leftpad(50).toList("");
+	batch_numbers = list();
+	count = 1;
+	for each  i in dummy_pages
+	{
+		batch_numbers.add(count);
+		count = count + 1;
+	}
+	// Fetch all items using batch processing
+	all_items = list();
+	for each  batch_num in batch_numbers
+	{
+		offset = (batch_num - 1) * limit;
+		item_url = baseUrl + "/external/api/v1/items?active=true&ecommerce_active=true&offset=" + offset + "&limit=" + limit + brandParams;
+		response = invokeurl
+		[
+			url :item_url
+			type :GET
+			headers:headers
+		];
+		items_data = response.get("data");
+		if(items_data != null && items_data.size() > 0)
+		{
+			for each  item in items_data
+			{
+				all_items.add(item);
+			}
+		}
+		else
+		{
+			// No more items, break the loop
+			break;
+		}
+	}
+	info "Total items fetched: " + all_items.size();
+	// Commerce API Configuration
+	org_id = "895668522";
+	commerce_base_url = "https://commerce.zoho.com/store/api/v1";
+	// Commerce API Headers
+	commerce_headers = Map();
+	commerce_headers.put("X-com-zoho-store-organizationid",org_id);
+	commerce_headers.put("Content-Type","application/json");
+	// Process inventory in batches of 10
+	inventory_batch_size = 10;
+	inventory_batched_items = list();
+	inventory_counter = 0;
+	for each  item in all_items
+	{
+		inventory_batched_items.add(item);
+		inventory_counter = inventory_counter + 1;
+		// When we reach batch size of 10 or it's the last item
+		if(inventory_counter == inventory_batch_size || item == all_items.get(all_items.size() - 1))
+		{
+			// Build query params for inventory
+			query_params = "";
+			item_ids_map = Map();
+			for each  b_item in inventory_batched_items
+			{
+				item_id = b_item.get("id");
+				query_params = query_params + "item_id=" + item_id + "&";
+				item_ids_map.put(item_id.toString(),b_item);
+			}
+			// Trim last &
+			if(query_params.endsWith("&"))
+			{
+				query_params = query_params.subString(0,query_params.length() - 1);
+			}
+			// Get inventory data
+			inventory_url = baseUrl + "/external/api/v1/inventory/summary?" + query_params;
+			inventory_headers = Map();
+			inventory_headers.put("x-api-key",auth_header);
+			inventory_headers.put("FacilityID",facility_id);
+			inventory_response = invokeurl
+			[
+				url :inventory_url
+				type :GET
+				headers:inventory_headers
+			];
+			summary_data = inventory_response.get("data");
+			if(summary_data != null)
+			{
+				for each  summary in summary_data
+				{
+					id = summary.get("item_id").toString();
+					if(summary.get("sellable_qty") != null)
+					{
+						sellable_qty = summary.get("sellable_qty");
+					}
+					else
+					{
+						sellable_qty = 0;
+					}
+					keys_list = item_ids_map.keys();
+					if(keys_list.contains(id))
+					{
+						item_obj = item_ids_map.get(id);
+						item_obj.put("sellable_qty",sellable_qty);
+						// ======= ADD TO ZOHO COMMERCE =======
+						try 
+						{
+							external_item_id = item_obj.get("id");
+							// Get all categories first
+							get_all_categories_url = commerce_base_url + "/categories";
+							all_categories_response = invokeurl
+							[
+								url :get_all_categories_url
+								type :GET
+								headers:commerce_headers
+								connection:"zoho_commerce_connection1"
+							];
+							category_id = "";
+							target_category_name = item_obj.get("item_category");
+							if(all_categories_response.get("code") == 0)
+							{
+								categories_list = all_categories_response.get("categories");
+								// Search for the specific category (excluding ROOT)
+								for each  category in categories_list
+								{
+									if(category.get("name").equalsIgnoreCase(target_category_name) && category.get("category_id") != "-1")
+									{
+										category_id = category.get("category_id");
+										break;
+									}
+								}
+							}
+							// If not found, create new category
+							if(category_id == "")
+							{
+								create_category = commerce_base_url + "/categories";
+								category_item_data = Map();
+								category_item_data.put("name",target_category_name);
+								category_item_data.put("url",target_category_name);
+								category_response = invokeurl
+								[
+									url :create_category
+									type :POST
+									parameters:category_item_data.toString()
+									headers:commerce_headers
+									connection:"zoho_commerce_connection1"
+								];
+								if(category_response.get("code") == 0)
+								{
+									category_id = category_response.get("category").get("category_id");
+								}
+							}
+							// Check if item already exists in Commerce by SKU
+							existing_item_check_url = commerce_base_url + "/variants?sku=" + encodeUrl(item_obj.get("sku"));
+							check_response = invokeurl
+							[
+								url :existing_item_check_url
+								type :GET
+								headers:commerce_headers
+								connection:"zoho_commerce_connection1"
+							];
+							commerce_item_exists = false;
+							commerce_item_id = external_item_id;
+							commerce_variant_id = "";
+							commerce_product_id = "";
+							target_sku = item_obj.get("sku");
+							if(check_response.get("variants") != null)
+							{
+								variants_list = check_response.get("variants");
+								for each  variant in variants_list
+								{
+									if(variant.get("sku") == target_sku)
+									{
+										commerce_item_exists = true;
+										commerce_variant_id = variant.get("variant_id");
+										commerce_product_id = variant.get("product_id");
+										break;
+									}
+								}
+							}
+							// Prepare item data for Commerce
+							commerce_item_data = Map();
+							commerce_item_data.put("name",item_obj.get("item_name"));
+							item_name = item_obj.get("item_name");
+							// Clean URL slug - use only simple replaceAll for safe characters
+							url_slug = item_name.toLowerCase().replaceAll(" ","-");
+							// Remove percentage and other special characters
+							url_slug = url_slug.replaceAll("%","");
+							url_slug = url_slug.replaceAll("[^a-z0-9-]","");
+							// Replace multiple consecutive hyphens with single hyphen
+							url_slug = url_slug.replaceAll("-+","-");
+							// Remove leading/trailing hyphens
+							if(url_slug.startsWith("-"))
+							{
+								url_slug = url_slug.subString(1);
+							}
+							if(url_slug.endsWith("-"))
+							{
+								url_slug = url_slug.subString(0,url_slug.length() - 1);
+							}
+							commerce_item_data.put("url",url_slug);
+							commerce_item_data.put("sku",item_obj.get("sku"));
+							description = item_obj.get("description");
+							if(description != null && description != "")
+							{
+								commerce_item_data.put("description",description);
+							}
+							else
+							{
+								commerce_item_data.put("description","");
+							}
+							commerce_item_data.put("product_short_description","");
+							commerce_item_data.put("category_id",category_id);
+							commerce_item_data.put("product_type","goods");
+							commerce_item_data.put("variant_type","inventory");
+							commerce_item_data.put("is_returnable",true);
+							commerce_item_data.put("is_featured",false);
+							commerce_item_data.put("status","active");
+							// Add brand if available
+							if(item_obj.get("brand") != null)
+							{
+								commerce_item_data.put("brand",item_obj.get("brand"));
+							}
+							commerce_item_data.put("unit",item_obj.get("uom"));
+							// Collect UOM values from subform
+							create_variants = false;
+							cf_uom_value = item_obj.get("uom");
+							// Decision logic: Create variants or simple product
+							if(create_variants)
+							{
+								//write lot and variants
+							}
+							else
+							{
+								// CREATE SIMPLE PRODUCT - Single variant
+								variant_data = Map();
+								variant_data.put("sku",item_obj.get("sku"));
+								variant_data.put("status","active");
+								// Add price if available
+								if(item_obj.get("price") != null)
+								{
+									variant_data.put("rate",item_obj.get("price"));
+								}
+								// Add stock quantity
+								if(sellable_qty >= 0)
+								{
+									variant_data.put("initial_stock",sellable_qty);
+								}
+								else
+								{
+									variant_data.put("initial_stock",0);
+								}
+								// Add reorder level
+								variant_data.put("reorder_level","5");
+								// Add package details
+								package_details = Map();
+								package_details.put("weight","");
+								package_details.put("height","");
+								package_details.put("length","");
+								package_details.put("width","");
+								variant_data.put("package_details",package_details);
+								// Create single variant list
+								variants_list = list();
+								variant_custom_fields = list();
+								// First custom field - Commerce Item ID
+								cf_comment = Map();
+								cf_comment.put("customfield_id","6866972000000103521");
+								cf_comment.put("value",commerce_item_id);
+								variant_custom_fields.add(cf_comment);
+								// Second custom field - UOM Check
+								cf_second = Map();
+								cf_second.put("customfield_id","6866972000000725541");
+								Uomname = input.Uom;
+								// Set value based on UOM check
+								if(Uomname.isEmpty())
+								{
+									cf_second.put("value",false);
+								}
+								if(Uomname != null && !Uomname.isEmpty() && Uomname.contains(cf_uom_value))
+								{
+									cf_second.put("value",true);
+								}
+								else
+								{
+									cf_second.put("value",false);
+								}
+								variant_custom_fields.add(cf_second);
+								// Only add custom fields if they have values
+								if(variant_custom_fields.size() > 0)
+								{
+									variant_data.put("custom_fields",variant_custom_fields);
+								}
+								variants_list.add(variant_data);
+								commerce_item_data.put("variants",variants_list);
+							}
+							variants_data = commerce_item_data.get("variants");
+							if(commerce_item_exists)
+							{
+								// UPDATE existing item
+								// Update product details
+								update_product_url = commerce_base_url + "/products/" + commerce_product_id;
+								update_product_data = Map();
+								update_product_data.put("name",item_obj.get("item_name"));
+								update_product_data.put("url",url_slug);
+								update_product_data.put("description",description);
+								update_product_data.put("category_id",category_id);
+								if(item_obj.get("brand") != null)
+								{
+									update_product_data.put("brand",item_obj.get("brand"));
+								}
+								update_response = invokeurl
+								[
+									url :update_product_url
+									type :PUT
+									parameters:update_product_data.toString()
+									headers:commerce_headers
+									connection:"zoho_commerce_connection1"
+								];
+								// Update variant stock
+								update_variant_url = commerce_base_url + "/variants/" + commerce_variant_id;
+								update_variant_data = Map();
+								if(item_obj.get("price") != null)
+								{
+									update_variant_data.put("rate",item_obj.get("price"));
+								}
+								update_variant_data.put("stock",sellable_qty);
+								update_variant_response = invokeurl
+								[
+									url :update_variant_url
+									type :PUT
+									parameters:update_variant_data.toString()
+									headers:commerce_headers
+									connection:"zoho_commerce_connection1"
+								];
+								if(update_response.get("code") == 0 && update_variant_response.get("code") == 0)
+								{
+									info "Updated: " + item_obj.get("item_name") + " - Qty: " + sellable_qty;
+								}
+								else
+								{
+									info "Update Failed: " + item_obj.get("item_name");
+								}
+							}
+							else
+							{
+								// CREATE new item
+								create_url = commerce_base_url + "/products";
+								create_response = invokeurl
+								[
+									url :create_url
+									type :POST
+									parameters:commerce_item_data.toString()
+									headers:commerce_headers
+									connection:"zoho_commerce_connection1"
+								];
+								if(create_response.get("code") == 0)
+								{
+									product_id = create_response.get("product").get("product_id");
+									info "Created: " + item_obj.get("item_name") + " - Qty: " + sellable_qty;
+								}
+								else
+								{
+									info "Failed: " + item_obj.get("item_name") + " - " + create_response.get("message");
+								}
+							}
+						}
+						catch (e)
+						{
+							info "Error: " + item_obj.get("item_name") + " - " + e;
+						}
+						// ======= END COMMERCE SYNC =======
+					}
+				}
+			}
+			// Reset batch
+			inventory_batched_items.clear();
+			inventory_counter = 0;
+		}
+	}
+	info "Sync process completed";
+}
+else
+{
+	if(settings == null)
+	{
+		info "Flourish_Settings not found!";
+	}
+}

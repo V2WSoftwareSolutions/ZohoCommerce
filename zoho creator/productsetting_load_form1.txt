@@ -1,0 +1,112 @@
+existingRecord = Flourish_Settings[ID > 0];
+if(existingRecord != null)
+{
+	// It's already a single record — use it directly
+	input.Facility = existingRecord.Facility;
+	input.Brand = existingRecord.Brand;
+	input.Uom = existingRecord.Uom;
+	input.Api_Url = existingRecord.Api_Url;
+	input.webhook_signing_key = existingRecord.webhook_signing_key;
+	input.Status = existingRecord.Status;
+	input.Auth_header = existingRecord.Auth_header;
+	input.Last_Checked = existingRecord.Last_Checked;
+	info "Loaded existing record: " + existingRecord.ID;
+}
+else
+{
+	input.Api_Url = "https://app.flourishsoftware.com";
+	input.Status = "Not configured";
+	info "No record found in Flourish_Settings";
+}
+//fetch brand
+try 
+{
+	// Step 1: Call external API (Flourish)
+	url = "https://app.flourishsoftware.com/external/api/v1/brands";
+	headers = Map();
+	api_key = input.Auth_header;
+	headers.put("x-api-key",api_key);
+	response = invokeurl
+	[
+		url :url
+		type :GET
+		headers:headers
+	];
+	// Step 2: Parse data
+	brands = response.get("data");
+	brandList = list();
+	for each  b in brands
+	{
+		brandList.add(b.get("brand_name"));
+	}
+	// Step 3: Add to dropdown field dynamically
+	// If your field is "Colors" or "Brands"
+	input.Brand:ui.add(brandList);
+	// Add all fetched choices
+	info "Dropdown updated successfully!";
+}
+catch (e)
+{
+	info "Error: " + e.toString();
+}
+//Fetch Uom
+try 
+{
+	// Step 1: Call external API (Flourish)
+	url = "https://app.flourishsoftware.com/external/api/v1/uoms";
+	headers = Map();
+	api_key = input.Auth_header;
+	headers.put("x-api-key",api_key);
+	response = invokeurl
+	[
+		url :url
+		type :GET
+		headers:headers
+	];
+	// Step 2: Parse data
+	Uoms = response.get("data");
+	uomList = list();
+	for each  b in Uoms
+	{
+		uomList.add(b.get("uom"));
+	}
+	// Step 3: Add to dropdown field dynamically
+	// If your field is "Colors" or "Brands"
+	input.Uom:ui.add(uomList);
+	// Add all fetched choices
+	info "Dropdown updated successfully!";
+}
+catch (e)
+{
+	info "Error: " + e.toString();
+}
+try 
+{
+	// Step 1: Call external API (Flourish)
+	url = "https://app.flourishsoftware.com/external/api/v1/facilities";
+	headers = Map();
+	api_key = input.Auth_header;
+	headers.put("x-api-key",api_key);
+	response = invokeurl
+	[
+		url :url
+		type :GET
+		headers:headers
+	];
+	// Step 2: Parse data
+	facility = response.get("data");
+	facilitylist = list();
+	for each  b in facility
+	{
+		facilitylist.add(b.get("alias"));
+	}
+	// Step 3: Add to dropdown field dynamically
+	// If your field is "Colors" or "Brands"
+	input.Facility:ui.add(facilitylist);
+	// Add all fetched choices
+	info "Dropdown updated successfully!";
+}
+catch (e)
+{
+	info "Error: " + e.toString();
+}

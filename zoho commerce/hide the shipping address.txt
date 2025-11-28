@@ -1,0 +1,29 @@
+<script>
+(function () {
+    // Function to hide the shipping address section
+    function hideShippingSection() {
+        const fieldset = document.querySelector("fieldset");
+        if (fieldset) {
+            fieldset.style.display = "none";
+            console.log("✅ Shipping address section hidden");
+        } else {
+            // Retry if not yet loaded
+            setTimeout(hideShippingSection, 500);
+        }
+    }
+
+    // Initial run
+    hideShippingSection();
+
+    // Mutation observer for dynamic reloads (Zoho re-renders checkout)
+    const observer = new MutationObserver(() => {
+        const fieldset = document.querySelector("fieldset");
+        if (fieldset && fieldset.style.display !== "none") {
+            fieldset.style.display = "none";
+            console.log("✅ Shipping address section hidden dynamically");
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+})();
+</script>

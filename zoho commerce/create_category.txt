@@ -1,0 +1,51 @@
+
+// Get the Auth Token Dynamically
+creator_res = zoho.creator.getRecords("flourishsoftware","flourish-devlopment","Flourish_Settings_Report","",1,50,"creator_connection");
+zc_res = creator_res.get("data");
+if(zc_res.isEmpty())
+{
+	info "❌ No Auth Header found in Flourish_Settings_Report.";
+	return;
+}
+first_record = zc_res.get(0);
+Auth_header = first_record.get("Auth_header");
+// Get the Org Id Dynamically
+organizationID = organization.get("organization_id");
+// === [Step 1] Fetch categories from Flourish ===
+flourishUrl = "https://app.flourishsoftware.com/external/api/v1/itemcategories";
+// Flourish API headers
+flourishHeaders = Map();
+flourishHeaders.put("x-api-key",Auth_header);
+// Call Flourish API
+response = invokeurl
+[
+	url :flourishUrl
+	type :GET
+	headers:flourishHeaders
+];
+// Parse response
+flourishCategories = response.get("data");
+// info flourishCategories;
+// === [Step 2] Loop and create categories in Zoho Commerce ===
+for each  categoryItem in flourishCategories
+{
+	categoryName = categoryItem.get("item_category");
+	categoryUrl = categoryName.toLowerCase().replaceAll("[^a-z0-9-]","-").replaceAll("-+","-").replaceAll("(^-+)|(-+$)","");
+	// Prepare category payload
+	categoryPayload = Map();
+	categoryPayload.put("name",categoryName);
+	categoryPayload.put("url",categoryUrl);
+	categoryPayload.put("status","active");
+	// Send POST request to Zoho Commerce using connection
+	zohoResponse = invokeurl
+	[
+		url :"https://commerce.zoho.com/store/api/v1/categories"
+		type :POST
+		body:categoryPayload.toString()
+		headers:{"Content-Type":"application/json","X-com-zoho-store-organizationid":organizationID}
+		connection:"zohocommerce_connection"
+	];
+	// Log response
+	info "✅ Created category: " + categoryName;
+	info zohoResponse;
+}

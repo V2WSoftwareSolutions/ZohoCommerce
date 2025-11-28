@@ -1,0 +1,150 @@
+
+// Get Org Id
+organizationID = organization.get("organization_id");
+// Fetch records from Zoho Creator
+creator_res = zoho.creator.getRecords("flourishsoftware","flourish-devlopment","Flourish_Settings_Report","",1,200,"creator_connection");
+// Extract data array
+c_res = creator_res.get("data");
+// Get the first record from the list
+first_record = c_res.get(0);
+// Extract the Basic_Oauth_code field
+auth_code = first_record.get("Auth_header");
+info auth_code;
+// Extract Sales Order ID
+salesOrderId = salesorder.get("salesorder_id");
+// Define headers for Zoho Commerce API
+headersMap = Map();
+headersMap.put("Content-Type","application/json");
+headersMap.put("X-com-zoho-store-organizationid",organizationID);
+headersMap.put("X-ZOHO-Include-Formatted","true");
+// Fetch Sales Order details
+response = invokeurl
+[
+	url :"https://commerce.zoho.com/store/api/v1/salesorders/" + salesOrderId
+	type :GET
+	headers:headersMap
+	connection:"zohocommerce_connection"
+];
+res = response.get("salesorder");
+info res;
+// Extract custom fields
+custom_fields = res.get("custom_fields");
+for each  field in custom_fields
+{
+	if(field.get("api_name") == "cf_destination_id")
+	{
+		destination_id = field.get("value");
+		info "Destination ID: " + destination_id;
+	}
+	if(field.get("api_name") == "cf_state")
+	{
+		company_name = field.get("value");
+		info "Company Name: " + company_name;
+	}
+}
+// Extract other fields
+shipping_address = res.get("shipping_address");
+sales_ord_id = res.get("salesorder_id");
+info sales_ord_id;
+invoice_date = res.get("date");
+info invoice_date;
+shippingDetails = res.get("shipping_details");
+shipping_rate = shippingDetails.get("shipping_rate");
+currency_code = res.get("currency_code");
+discount = res.get("discount");
+// Build order lines list
+order_lines_list = list();
+line_items = res.get("line_items");
+for each  line_item in line_items
+{
+	line_map = Map();
+	product_id = line_item.get("product_id");
+	// Get product details
+	item_response = invokeurl
+	[
+		url :"https://commerce.zoho.com/store/api/v1/products/editpage?product_id=" + product_id
+		type :GET
+		headers:headersMap
+		connection:"zohocommerce_connection"
+	];
+	itm_res = item_response.get("product");
+	info "item response: " + itm_res;
+	custom_fields = itm_res.get("custom_fields");
+	itemsss_id = null;
+	for each  cf in custom_fields
+	{
+		if(cf.get("field_id") == "7631921000000094028")
+		{
+			itemsss_id = cf.get("value");
+			break;
+		}
+	}
+	// Convert or fallback
+	if(itemsss_id != null && itemsss_id != "")
+	{
+		line_map.put("item_id",itemsss_id);
+	}
+	// Add remaining line item data
+	info line_item;
+	sku = line_item.get("sku");
+	quantity = line_item.get("quantity");
+	rate = line_item.get("rate");
+	line_map.put("sku",sku);
+	line_map.put("lot_number","");
+	line_map.put("order_qty",quantity);
+	line_map.put("unit_price",rate);
+	order_lines_list.add(line_map);
+}
+// Construct payload for Flourish
+externalPayload = Map();
+externalPayload.put("original_order_id",sales_ord_id.toString());
+externalPayload.put("invoice_date",invoice_date.toString());
+externalPayload.put("order_lines",order_lines_list);
+// Add destination
+destinationMap = Map();
+destinationMap.put("id",destination_id);
+externalPayload.put("destination",destinationMap);
+// Flourish API headers
+externalHeaders = Map();
+externalHeaders.put("FacilityID","6780865a684995000711f075");
+externalHeaders.put("x-api-key",auth_code);
+externalHeaders.put("Content-Type","application/json");
+// Send to Flourish
+externalResponse = invokeurl
+[
+	url :"https://app.flourishsoftware.com/external/api/v1/outbound-orders"
+	type :POST
+	parameters:externalPayload.toString()
+	headers:externalHeaders
+];
+info "Flourish Outbound orders: " + externalResponse;
+flourish_res = externalResponse.get("data");
+order_id = flourish_res.get("id");
+info "Flourish Order ID: " + order_id;
+// Update Flourish order ID
+customFieldId = "7631921000000094124";
+valueToUpdate = order_id;
+// Headers for update
+headersMap = Map();
+headersMap.put("Content-Type","application/json");
+headersMap.put("X-com-zoho-store-organizationid",organizationID);
+headersMap.put("X-ZOHO-Include-Formatted","true");
+// Request body
+customFieldMap = Map();
+customFieldMap.put("customfield_id",customFieldId);
+customFieldMap.put("value",valueToUpdate);
+customFieldsList = List();
+customFieldsList.add(customFieldMap);
+payload = Map();
+payload.put("custom_fields",customFieldsList);
+// Invoke PUT request
+updateResponse = invokeurl
+[
+	url :"https://commerce.zoho.com/store/api/v1/salesorders/" + salesOrderId
+	type :PUT
+	parameters:payload.toString()
+	headers:headersMap
+	connection:"zohocommerce_connection"
+];
+// Log response (for debugging)
+info updateResponse;

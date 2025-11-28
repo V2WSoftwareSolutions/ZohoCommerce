@@ -1,0 +1,49 @@
+try 
+{
+	if(input.Facility != null && input.Facility != "" && input.Api_Url != null && input.Api_Url != "" && input.Auth_header != null && input.Auth_header != "")
+	{
+		baseUrl = input.Api_Url.trim();
+		// e.g., https://app.flourishsoftware.com
+		facility = input.Facility;
+		headers = Map();
+		headers.put("x-api-key",input.Auth_header);
+		// Clean baseUrl
+		if(baseUrl.endsWith("/"))
+		{
+			baseUrl = baseUrl.subString(0,baseUrl.length() - 1);
+		}
+		// Build URL safely
+		facilityurl = baseUrl + "/external/api/v1/facilities?name=" + encodeUrl(facility);
+		info "Facility URL: " + facilityurl;
+		response = invokeurl
+		[
+			url :facilityurl
+			type :GET
+			headers:headers
+		];
+		facility_data = response.get("data");
+		facility_id = "";
+		for each  f in facility_data
+		{
+			if(f.get("alias") == facility || f.get("facility_name") == facility)
+			{
+				facility_id = f.get("id");
+				break;
+			}
+		}
+		input.Facility_Id = facility_id;
+		if(facility_id == "")
+		{
+			info "No matching facility found for: " + facility;
+		}
+	}
+	else
+	{
+		input.Facility_Id = "";
+		info "Facility or API details missing. Facility_Id cleared.";
+	}
+}
+catch (e)
+{
+	info "Error fetching facility ID: " + e.toString();
+}

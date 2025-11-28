@@ -1,0 +1,83 @@
+<style>
+/* Loading overlay */
+#custom-loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    color: white;
+    font-size: 1.5rem;
+    text-align: center;
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+/* Spinner animation */
+#custom-loading-overlay::before {
+    content: "";
+    width: 50px;
+    height: 50px;
+    border: 5px solid #ffffff;
+    border-top-color: transparent;
+    border-radius: 50%;
+    margin-bottom: 15px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+</style>
+
+<script>
+(function () {
+    function initLoadingOverlay() {
+        // Create overlay if not already present
+        if (!document.getElementById("custom-loading-overlay")) {
+            const overlay = document.createElement("div");
+            overlay.id = "custom-loading-overlay";
+            overlay.innerHTML = `<p>Loading, please wait...</p>`;
+            document.body.appendChild(overlay);
+        }
+
+        const overlay = document.getElementById("custom-loading-overlay");
+
+        // When "Add New Address" is clicked
+        document.body.addEventListener("click", function (e) {
+            const target = e.target.closest("a.add-address");
+            if (target) {
+                overlay.style.display = "flex";
+            }
+        });
+
+        // Observe checkout area for changes (Zoho dynamically re-renders)
+        const observer = new MutationObserver(() => {
+            // Hide loader if the new address form or page content is ready
+            const addressForm = document.querySelector("form#zs-address-box-form, div[data-zs-container-billing-address-list]");
+            if (addressForm) {
+                overlay.style.display = "none";
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        // Also hide loader on full reload (if it happens)
+        window.addEventListener("load", () => {
+            overlay.style.display = "none";
+        });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initLoadingOverlay);
+    } else {
+        initLoadingOverlay();
+    }
+})();
+</script>

@@ -1,0 +1,30 @@
+<script>
+(function hideBillingSameAsShipping() {
+
+    function hideIt() {
+        // Checkbox
+        const checkbox = document.querySelector("#zs-toggle-billing-shipping-in-list");
+        if (!checkbox) {
+            setTimeout(hideIt, 300);
+            return;
+        }
+
+        // The whole row container
+        const row = checkbox.closest(".theme-form-row");
+
+        // Hide checkbox
+        checkbox.style.display = "none";
+
+        // Hide label
+        const label = row.querySelector("label");
+        if (label) label.style.display = "none";
+
+        // Hide full row
+        row.style.display = "none";
+
+        console.log("Billing Address same as Shipping Address — Hidden");
+    }
+
+    hideIt();
+})();
+</script>

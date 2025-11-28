@@ -1,0 +1,149 @@
+
+// -----------------------------
+// Step 1: Basic Setup
+// -----------------------------
+organizationId = organization.get("organization_id");
+apiRootEndpoint = organization.get("api_root_endpoint");
+parentFolderId = "71627000000119001";
+// Folder where JSON will be stored
+// -----------------------------
+// Step 2: Prepare File API Headers
+// -----------------------------
+requestHeaders = Map();
+requestHeaders.put("X-Site-Id","895668125");
+requestHeaders.put("X-Site-Resource-Id",parentFolderId);
+// -----------------------------
+// Step 3: Get List of Files (to find and delete old JSON file)
+// -----------------------------
+listFilesApiUrl = "https://ecommerce.zoho.com/zs-site/api/v1/files?sortType=0";
+listFilesResponse = invokeurl
+[
+	url :listFilesApiUrl
+	type :GET
+	headers:requestHeaders
+	connection:"commerce_file_scope"
+];
+filesArray = listFilesResponse.get("resources").get("files");
+lastUploadedFileId = "";
+for each  fileDetails in filesArray
+{
+	fileResourceUrl = fileDetails.get("resource_url");
+	if(fileResourceUrl != null && fileResourceUrl.endsWith("destination.json"))
+	{
+		lastUploadedFileId = fileDetails.get("resource_fk_id");
+		break;
+	}
+}
+info "Old File ID: " + lastUploadedFileId;
+// -----------------------------
+// Step 4: Call External API (Flourish Software) — Fetch All Records
+// -----------------------------
+baseUrl = "https://app.flourishsoftware.com";
+limit = 50;
+offset = 0;
+total_records = 0;
+batch_count = 1;
+// API headers
+externalHeaders = Map();
+externalHeaders.put("x-api-key","5fb75d8b-8eab-4123-aa74-9a076b0c47e0");
+externalHeaders.put("Content-Type","application/json");
+// List to store all destination records
+all_destinations = List();
+// Dummy list to simulate looping (Deluge-safe, 100 batches max)
+dummy_batches = "".leftpad(100).toList("");
+// Loop through batches
+for each  batch_item in dummy_batches
+{
+	offset = (batch_count - 1) * limit;
+	info "Fetching batch " + batch_count + " | Offset: " + offset;
+	response = invokeurl
+	[
+		url :baseUrl + "/external/api/v1/destinations?offset=" + offset + "&limit=" + limit
+		type :GET
+		headers:externalHeaders
+	];
+	data = response.get("data");
+	if(data == null)
+	{
+		info "No data received. Stopping.";
+		break;
+	}
+	record_count = data.size();
+	info "Records fetched in batch " + batch_count + ": " + record_count;
+	// Add current batch to master list
+	all_destinations.addAll(data);
+	total_records = total_records + record_count;
+	// Stop if last batch (less than limit)
+	if(record_count < limit)
+	{
+		info "Reached final batch. Total records fetched: " + total_records;
+		break;
+	}
+	batch_count = batch_count + 1;
+}
+// Wrap the data for output
+externalResponse = Map();
+externalResponse.put("message","Success");
+externalResponse.put("status",200);
+externalResponse.put("data",all_destinations);
+info "✅ Total records fetched: " + total_records;
+// -----------------------------
+// Step 5: Delete Old File (if found)
+// -----------------------------
+if(lastUploadedFileId != null && lastUploadedFileId != "")
+{
+	deleteFilePayload = "{ \"resource_ids\": [\"" + lastUploadedFileId + "\"]}";
+	requestHeaders.put("accept","application/json");
+	deleteFileResponse = invokeurl
+	[
+		url :"https://ecommerce.zoho.com/zs-site/api/v1/files/delete"
+		type :POST
+		parameters:deleteFilePayload
+		headers:requestHeaders
+		connection:"commerce_file_scope"
+	];
+	info "🗑️ Old file deleted: " + deleteFileResponse;
+}
+// -----------------------------
+// Step 6: Create JSON File from External API Response
+// -----------------------------
+fileBaseName = "destination";
+destinationFile = externalResponse.toString().toFile(fileBaseName);
+destinationFile.setFileName(fileBaseName + ".json");
+info "✅ JSON file created successfully.";
+// -----------------------------
+// Step 7: Upload New File to Folder
+// -----------------------------
+uploadPayload = Map();
+uploadPayload.put("parent_id",parentFolderId);
+uploadPayload.put("optimize",true);
+uploadPayload.put("File",destinationFile);
+requestHeaders.remove("content-type");
+uploadResponse = invokeurl
+[
+	url :"https://ecommerce.zoho.com/zs-site/api/v1/files"
+	type :POST
+	parameters:uploadPayload
+	headers:requestHeaders
+	connection:"commerce_file_scope"
+	content-type:"multipart/form-data"
+];
+info "✅ File uploaded successfully: " + uploadResponse;
+// -----------------------------
+// Step 8: Publish Uploaded File
+// -----------------------------
+uploadedFilesData = uploadResponse.get("files");
+if(uploadedFilesData.contains("filesList") && uploadedFilesData.get("filesList") != null && uploadedFilesData.get("filesList").size() > 0)
+{
+	firstUploadedFile = uploadedFilesData.get("filesList").get(0);
+	newResourceId = firstUploadedFile.get("resource_id");
+	publishResponse = invokeurl
+	[
+		url :"https://ecommerce.zoho.com/zs-site/api/v1/resources/" + newResourceId + "/publish"
+		type :POST
+		headers:requestHeaders
+		connection:"commerce_file_scope"
+	];
+	info "✅ File published successfully: " + publishResponse;
+}
+info "🎉 Completed Successfully. Total records saved: " + total_records;

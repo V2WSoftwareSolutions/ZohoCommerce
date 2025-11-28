@@ -1,0 +1,17 @@
+if(input.client_id != null && input.Client_Secret != null)
+{
+	input.client_id = input.client_id;
+	client_secret = input.Client_Secret;
+	scope = input.Scope_field;
+	auth_code = input.Auth_code;
+	url = "https://accounts.zoho.in/oauth/v2/token";
+	response = invokeurl
+	[
+		url :url
+		type :POST
+		parameters:{"client_id":input.client_id,"client_secret":client_secret,"grant_type":"authorization_code","code":auth_code}
+		headers:{"Content-Type":"application/x-www-form-urlencoded"}
+	];
+	input.Refresh_Token = response.get("refresh_token");
+	input.Access_Token = response.get("access_token");
+}

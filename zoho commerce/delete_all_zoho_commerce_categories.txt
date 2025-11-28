@@ -1,0 +1,25 @@
+
+organizationID = organization.get("organization_id");
+info organizationID;
+organization_id = "904994956";
+// Step 1: Get all categories
+response = invokeurl
+[
+	url :"https://commerce.zoho.com/store/api/v1/categories?organization_id=" + organization_id
+	type :GET
+	connection:"full_access"
+];
+categories = response.get("categories");
+// Step 2: Loop through and delete each category
+for each  category in categories
+{
+	category_id = category.get("category_id");
+	deleteResponse = invokeurl
+	[
+		url :"https://commerce.zoho.com/store/api/v1/categories/" + category_id + "?organization_id=" + organization_id
+		type :DELETE
+		connection:"full_access"
+	];
+	info "Deleted category: " + category_id;
+	info deleteResponse;
+}

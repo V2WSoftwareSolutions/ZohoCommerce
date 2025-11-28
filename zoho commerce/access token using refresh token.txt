@@ -1,0 +1,120 @@
+
+// -----------------------------
+// Step 1: Basic Setup
+// -----------------------------
+organizationId = organization.get("organization_id");
+apiRootEndpoint = organization.get("api_root_endpoint");
+store = organization.get("my_sites");
+info store;
+// Folder where JSON will be stored
+parentFolderId = "120373000000007585";
+// -----------------------------
+// Step 2: Prepare File API Headers
+// -----------------------------
+requestHeaders = Map();
+requestHeaders.put("X-Site-Id","904994954");
+requestHeaders.put("X-Site-Resource-Id",parentFolderId);
+// -----------------------------
+// Step 3: Get List of Files (to find and delete old access_token.json file)
+// -----------------------------
+listFilesApiUrl = "https://ecommerce.zoho.com/zs-site/api/v1/files?sortType=0";
+listFilesResponse = invokeurl
+[
+	url :listFilesApiUrl
+	type :GET
+	headers:requestHeaders
+	connection:"commerce_file_scope"
+];
+filesArray = listFilesResponse.get("resources").get("files");
+lastUploadedFileId = "";
+for each  fileDetails in filesArray
+{
+	fileResourceUrl = fileDetails.get("resource_url");
+	if(fileResourceUrl != null && fileResourceUrl.endsWith("access_token.json"))
+	{
+		lastUploadedFileId = fileDetails.get("resource_fk_id");
+		break;
+	}
+}
+info "Old access_token.json File ID: " + lastUploadedFileId;
+// -----------------------------
+// Step 4: Call Zoho Accounts - Refresh Access Token
+// -----------------------------
+refreshUrl = "https://accounts.zoho.com/oauth/v2/token";
+// Parameters for refresh_token grant
+params = Map();
+params.put("refresh_token","1000.fe259f36ec5db425de6dcfc7449851aa.23b689ed87add9afbb5426d320118600");
+params.put("client_id","1000.IJKB26P0JNT1K14YRSMFFCUVERU6KW");
+params.put("client_secret","ae731ffdd7f759e5acd96f751a0c8aec06e6708c1c");
+params.put("grant_type","refresh_token");
+// Call Zoho Accounts
+tokenResponse = invokeurl
+[
+	url :refreshUrl
+	type :POST
+	parameters:params
+];
+// Log full response to check
+info "Token Refresh Response : " + tokenResponse;
+// -----------------------------
+// Step 5: Delete Old File (if found)
+// -----------------------------
+if(lastUploadedFileId != null && lastUploadedFileId != "")
+{
+	deleteFilePayload = "{ \"resource_ids\": [\"" + lastUploadedFileId + "\"]}";
+	requestHeaders.put("accept","application/json");
+	deleteFileResponse = invokeurl
+	[
+		url :"https://ecommerce.zoho.com/zs-site/api/v1/files/delete"
+		type :POST
+		parameters:deleteFilePayload
+		headers:requestHeaders
+		connection:"commerce_file_scope"
+	];
+	info "🗑️ Old access_token.json file deleted: " + deleteFileResponse;
+}
+// -----------------------------
+// Step 6: Create JSON File from Token Response
+// -----------------------------
+fileBaseName = "access_token";
+// Convert tokenResponse map to JSON string and then to file
+accessTokenFile = tokenResponse.toString().toFile(fileBaseName);
+accessTokenFile.setFileName(fileBaseName + ".json");
+info "✅ access_token.json file created successfully.";
+// -----------------------------
+// Step 7: Upload New File to Folder
+// -----------------------------
+uploadPayload = Map();
+uploadPayload.put("parent_id",parentFolderId);
+uploadPayload.put("optimize",true);
+uploadPayload.put("File",accessTokenFile);
+// Remove content-type from headers so multipart can set it
+requestHeaders.remove("content-type");
+uploadResponse = invokeurl
+[
+	url :"https://ecommerce.zoho.com/zs-site/api/v1/files"
+	type :POST
+	parameters:uploadPayload
+	headers:requestHeaders
+	connection:"commerce_file_scope"
+	content-type:"multipart/form-data"
+];
+info "✅ access_token.json file uploaded successfully: " + uploadResponse;
+// -----------------------------
+// Step 8: Publish Uploaded File
+// -----------------------------
+uploadedFilesData = uploadResponse.get("files");
+if(uploadedFilesData.contains("filesList") && uploadedFilesData.get("filesList") != null && uploadedFilesData.get("filesList").size() > 0)
+{
+	firstUploadedFile = uploadedFilesData.get("filesList").get(0);
+	newResourceId = firstUploadedFile.get("resource_id");
+	publishResponse = invokeurl
+	[
+		url :"https://ecommerce.zoho.com/zs-site/api/v1/resources/" + newResourceId + "/publish"
+		type :POST
+		headers:requestHeaders
+		connection:"commerce_file_scope"
+	];
+	info "✅ access_token.json file published successfully: " + publishResponse;
+}
+info "🎉 Completed Successfully. Access token file updated.";

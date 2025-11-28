@@ -1,0 +1,138 @@
+<script>
+(function () {
+    console.log("🧮 Case quantity +/- script loaded");
+
+    // Read Has variants + Case Quantity from the info list
+    function getVariantInfo(cartRow) {
+        const infoUl = cartRow.querySelector('.theme-cart-item-info ul');
+        let hasVariants = false;
+        let caseQty = 1;
+
+        if (!infoUl) return { hasVariants, caseQty };
+
+        infoUl.querySelectorAll('li').forEach(li => {
+            const text = li.textContent.trim();
+
+            // Has variants: <li>Has variants: <span>true</span></li>
+            if (text.includes('Has variants:')) {
+                const span = li.querySelector('span');
+                if (span && span.textContent.trim().toLowerCase() === 'true') {
+                    hasVariants = true;
+                }
+            }
+
+            // Case Quantity: <li>Case Quantity: <span>12</span></li>
+            if (text.includes('Case Quantity:')) {
+                const span = li.querySelector('span');
+                if (span) {
+                    const parsed = parseInt(span.textContent.trim(), 10);
+                    if (!isNaN(parsed) && parsed > 0) {
+                        caseQty = parsed;
+                    }
+                }
+            }
+        });
+
+        return { hasVariants, caseQty };
+    }
+
+    // Enable / disable (readonly) the qty input based on hasVariants
+    function updateQtyEditState(cartRow) {
+        const { hasVariants } = getVariantInfo(cartRow);
+        const qtyInput = cartRow.querySelector('input[data-zs-quantity]');
+        if (!qtyInput) return;
+
+        if (hasVariants) {
+            // User cannot type, but JS (and Zoho) can still change the value
+            qtyInput.setAttribute('readonly', 'readonly');
+        } else {
+            qtyInput.removeAttribute('readonly');
+        }
+    }
+
+    // Run once on page load to lock/unlock all rows
+    function initQtyFieldLocking() {
+        if (!(window.zs_view === 'cart' || window.zs_view === '/cart' || window.location.pathname.indexOf('/cart') !== -1)) {
+            return;
+        }
+        document.querySelectorAll('.theme-cart-table-row[data-cart-item]').forEach(row => {
+            updateQtyEditState(row);
+        });
+    }
+
+    // Change quantity by case size for a single row
+    function changeQtyByCase(buttonEl, direction) {
+        // direction: +1 for plus, -1 for minus
+
+        // Only act on cart page
+        if (!(window.zs_view === 'cart' || window.zs_view === '/cart' || window.location.pathname.indexOf('/cart') !== -1)) {
+            return;
+        }
+
+        const cartRow = buttonEl.closest('.theme-cart-table-row[data-cart-item]');
+        if (!cartRow) return;
+
+        // --- 1) Read "Has variants" and "Case Quantity" ---
+        const info = getVariantInfo(cartRow);
+        const hasVariants = info.hasVariants;
+        const caseQty = info.caseQty;
+
+        // Always update edit state (readonly vs editable)
+        updateQtyEditState(cartRow);
+
+        // If no variants, let Zoho behave normally (1-by-1 change)
+        if (!hasVariants) return;
+
+        // --- 2) Get current quantity from the Zoho default field ---
+        const qtyInput = cartRow.querySelector('input[data-zs-quantity]');
+        if (!qtyInput) return;
+
+        let currentQty = parseInt(qtyInput.value, 10);
+        if (isNaN(currentQty)) currentQty = 0;
+
+        console.log(`➡️ Before click: qty=${currentQty}, caseQty=${caseQty}, dir=${direction}`);
+
+        // --- 3) Neutralize Zoho's internal +1 / -1 ---
+        if (direction === 1) {
+            // PLUS: Zoho will add +1 later → subtract 1 now
+            currentQty = currentQty - 1;
+        } else if (direction === -1) {
+            // MINUS: Zoho will subtract 1 later → add 1 now
+            currentQty = currentQty + 1;
+        }
+
+        // --- 4) Apply the case-size step ---
+        let newQty = currentQty + (direction * caseQty);
+
+        // Boundaries
+        if (newQty < 0) newQty = 0;
+
+        console.log(`🔁 After logic (before Zoho): ${currentQty} → ${newQty}`);
+
+        // --- 5) Write back and trigger Zoho change handler ---
+        qtyInput.value = newQty;
+        qtyInput.setAttribute('value', newQty);
+        qtyInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    // Attach to + / - buttons
+    document.addEventListener('click', function (e) {
+        const target = e.target;
+
+        // PLUS button
+        if (target.matches('input.theme-cart-qty-inc-dec[aria-label="Increase quantity"]')) {
+            e.preventDefault();  // prevent default, but let Zoho JS still see the click
+            changeQtyByCase(target, +1);
+        }
+
+        // MINUS button
+        if (target.matches('input.theme-cart-qty-inc-dec[aria-label="Decrease quantity"]')) {
+            e.preventDefault();
+            changeQtyByCase(target, -1);
+        }
+    }, true); // capture phase so we run before Zoho handlers
+
+    // Initialize lock/unlock on load
+    window.addEventListener('load', initQtyFieldLocking);
+})();
+</script>

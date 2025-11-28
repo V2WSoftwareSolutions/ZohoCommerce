@@ -1,0 +1,78 @@
+<script>
+//Create account code
+(function () {
+  var FORM_URL = "https://commerce.zohopublic.com/webforms/d3bb75d8ca2be265f01c79fc97fb1da049efc65f41cc8e79c894336a14a0b6321a2e946be5f5d8b2233f6aa58f0ca034";
+
+  // Simple blue button style (similar to .btn.blue)
+  var css = `
+    .zc-register-wrap { text-align:center; margin-top:16px; }
+    .zc-register-btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      height:40px; padding:0 18px; border:0; border-radius:6px;
+      font-weight:700; font-size:16px; cursor:pointer;
+      background:#3d4236; color:#fff; box-shadow:0 1px 2px rgba(0,0,0,.08);
+      transition:opacity .15s ease;
+    }
+    .zc-register-btn:hover { opacity:.92; }
+  `;
+  var style = document.createElement("style");
+  style.textContent = css;
+  document.head.appendChild(style);
+
+  function addButtonBelowIframe(ifr) {
+    // Avoid duplicates
+    if (document.querySelector(".zc-register-wrap")) return;
+
+    var wrap = document.createElement("div");
+    wrap.className = "zc-register-wrap";
+
+    var btn = document.createElement("button");
+    btn.className = "zc-register-btn";
+    btn.type = "button";
+    btn.textContent = "Create Account";
+    btn.addEventListener("click", function () {
+      // open in new tab; change to location.href = FORM_URL for same tab
+      window.open(FORM_URL, "_blank");
+    });
+
+    wrap.appendChild(btn);
+
+    // Insert right after the iframe
+    if (ifr.parentNode) {
+      if (ifr.nextSibling) {
+        ifr.parentNode.insertBefore(wrap, ifr.nextSibling);
+      } else {
+        ifr.parentNode.appendChild(wrap);
+      }
+    }
+  }
+
+  function findIframe() {
+    // Try common selectors for the sign-in frame
+    return (
+      document.querySelector("iframe.signin-iframe") ||
+      document.querySelector("iframe[src*='signin']") ||
+      document.querySelector("iframe[src*='login']") ||
+      document.querySelector("iframe[src*='auth']")
+    );
+  }
+
+  function init() {
+    var ifr = findIframe();
+    if (!ifr) { setTimeout(init, 500); return; }
+
+    // When the iframe loads, or if it is already loaded, add the button below it
+    addButtonBelowIframe(ifr);
+
+    // Also re-add on future replacements of the iframe (some pages re-render)
+    var mo = new MutationObserver(function () {
+      var existing = document.querySelector(".zc-register-wrap");
+      var currentIframe = findIframe();
+      if (currentIframe && !existing) addButtonBelowIframe(currentIframe);
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+  }
+
+  window.addEventListener("load", init);
+})();
+</script>

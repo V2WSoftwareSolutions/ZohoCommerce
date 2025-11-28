@@ -1,0 +1,104 @@
+
+// // --- Extract Sales Order ID ---
+// salesOrderId = salesorder.get("salesorder_id");
+// // --- Headers ---
+// headersMap = Map();
+// headersMap.put("X-com-zoho-store-organizationid","895668522");
+// headersMap.put("X-ZOHO-Include-Formatted","true");
+// // --- Fetch Sales Order details ---
+// response = invokeurl
+// [
+// 	url :"https://commerce.zoho.com/store/api/v1/salesorders/" + salesOrderId
+// 	type :GET
+// 	headers:headersMap
+// 	connection:"zohocommerce_connection"
+// ];
+// // --- Parse ---
+// salesorder_res = response.get("salesorder");
+// line_items_res = salesorder_res.get("line_items");
+// // --- Loop through line items ---
+// for each  li in line_items_res
+// {
+// 	item_id = li.get("product_id");
+// 	quantity = li.get("quantity");
+// 	info "item_id: " + item_id + " | qty: " + quantity;
+// 	// --- Define product ID ---
+product_id = "6866972000000838955";
+// --- API URL ---
+url = "https://commerce.zoho.com/store/api/v1/products/editpage?product_id=" + product_id;
+// --- Headers ---
+headersMap = Map();
+headersMap.put("X-com-zoho-store-organizationid","895668522");
+// --- Invoke Zoho Commerce API ---
+item_response = invokeurl
+[
+	url :url
+	type :GET
+	headers:headersMap
+	connection:"zohocommerce_connection"
+];
+// product object
+info item_response;
+// 	item = item_response.get("product");
+// 	variants = item.get("variants");
+// 	// loop through each variant
+// 	for each  v in variants
+// 	{
+// 		custom_fields = v.get("custom_fields");
+// 		variant_id = v.get("variant_id");
+// 		info "variant_id:" + variant_id;
+// 		// loop through each custom field
+// 		for each  cf in custom_fields
+// 		{
+// 			if(cf.get("field_id") == "6866972000000220006")
+// 			{
+// 				reserve_stock_value = cf.get("value");
+// 				// handle null or empty
+// 				if(reserve_stock_value == null || reserve_stock_value == "")
+// 				{
+// 					reserve_stock_value = 0;
+// 				}
+// 				info "Reserve stock value: " + reserve_stock_value;
+// 				update_value = reserve_stock_value.toLong() + quantity.toLong();
+// 				info "update_value:" + update_value;
+// 				// Product ID to update
+// 				// API URL for updating product
+// 				url = "https://commerce.zoho.com/store/api/v1/products/" + product_id;
+// 				// Org header
+// 				headers = Map();
+// 				headers.put("X-com-zoho-store-organizationid","895668522");
+// 				headers.put("Content-Type","application/json");
+// 				// Data to update
+// 				updateData = Map();
+// 				updateData.put("is_returnable",false);
+// 				updateData.put("is_featured",true);
+// 				// Variant update
+// 				variantMap = Map();
+// 				variantMap.put("variant_id",variant_id);
+// 				// Custom field inside the variant
+// 				cf_reserve_stock = Map();
+// 				cf_reserve_stock.put("field_id","6866972000000220006");
+// 				cf_reserve_stock.put("customfield_id","6866972000000220006");
+// 				cf_reserve_stock.put("value",update_value);
+// 				customFieldsList = list();
+// 				customFieldsList.add(cf_reserve_stock);
+// 				variantMap.put("custom_fields",customFieldsList);
+// 				// Add variant to variants list
+// 				variantsList = list();
+// 				variantsList.add(variantMap);
+// 				updateData.put("variants",variantsList);
+// 				// Call API
+// 				response = invokeurl
+// 				[
+// 					url :url
+// 					type :PUT
+// 					body:updateData.toString()
+// 					headers:headers
+// 					connection:"zohocommerce_connection"
+// 				];
+// 				// Log API response
+// // 				info response;
+// 			}
+// 		}
+// 	}
+// }

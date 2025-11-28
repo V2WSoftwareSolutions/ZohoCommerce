@@ -1,0 +1,11 @@
+admin_records = Flourish_Settings[ID != 0];
+if(admin_records.count() > 0)
+{
+	// Delete all existing records
+	for each  record in admin_records
+	{
+		delete from Flourish_Settings[ID == record.ID];
+		info "Deleted record: " + record.ID;
+	}
+	// The new record will be created automatically after deletion
+}

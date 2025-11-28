@@ -1,0 +1,31 @@
+<script>
+(function() {
+    function modifyProductPage() {
+        // Remove "Non-returnable"
+        const nonReturnable = document.querySelector("div.theme-prod-non-returnable, div.theme-prod-non-returnable-out-of-stock");
+        if (nonReturnable) {
+            nonReturnable.style.display = "none";
+            console.log("✅ Removed Non-returnable text");
+        }
+
+        // Remove "CASE SIZE" variant label
+        const caseSizeLabel = document.querySelector("div.theme-product-variant-label");
+        if (caseSizeLabel && caseSizeLabel.textContent.trim().toUpperCase() === "CASE SIZE") {
+            caseSizeLabel.style.display = "none";
+            console.log("✅ Removed Case Size label");
+        }
+
+        // Rename "Customize" → "Pick a Case Size"
+        const customizeHeading = document.querySelector("span.theme-custom-field-heading");
+        if (customizeHeading && customizeHeading.textContent.trim() === "Customize") {
+            customizeHeading.textContent = "Pick a Case Size";
+            console.log("✅ Renamed Customize to Pick a Case Size");
+        }
+
+        // Keep checking in case Zoho re-renders dynamically
+        setTimeout(modifyProductPage, 2000);
+    }
+
+    document.addEventListener("DOMContentLoaded", modifyProductPage);
+})();
+</script>

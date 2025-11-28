@@ -1,0 +1,242 @@
+<script>
+  //Destination logic
+async function loadDestinations() {
+    // Avoid duplicates
+    if (document.querySelector(".destination-container")) return;
+
+    // Locate target container (checkout or edit form)
+    const inputContainer =
+        document.querySelector("[data-zs-input-container]") ||
+        document.querySelector(".checkout-address-edit [data-zs-input-container]") ||
+        document.querySelector(".theme-checkout-edit-form [data-zs-input-container]") ||
+        document.querySelector("form[action*='checkout'] [data-zs-input-container]");
+
+    if (!inputContainer) {
+        console.warn("Destination container not yet available. Retrying...");
+        setTimeout(loadDestinations, 800); 
+        return;
+    }
+
+    // Create dropdown container
+    const container = document.createElement("div");
+    container.classList.add("destination-container");
+
+    const label = document.createElement("label");
+    label.textContent = "Select Destination:";
+
+    const select = document.createElement("select");
+    select.classList.add("destination-select");
+
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "Loading destinations...";
+    select.appendChild(defaultOption);
+
+    container.appendChild(label);
+    container.appendChild(select);
+    inputContainer.appendChild(container);
+
+    // Hide Destination ID field if it exists
+  	document.querySelectorAll('label.theme-text-color-light').forEach(label => {
+        if (label.textContent.trim().includes('Destination ID')) {
+            label.style.display = 'none';
+            if (label.nextElementSibling) {
+                label.nextElementSibling.style.display = 'none';
+            }
+        }
+    
+    });
+
+    // Fetch destinations
+    let destinations = [];
+    try {
+        const response = await fetch(`${window.location.origin}/destination/destination.json`);
+        const data = await response.json();
+        select.innerHTML = "";
+
+        if (data?.data?.length) {
+            destinations = data.data;
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "Select a destination";
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            select.appendChild(placeholder);
+
+            destinations.forEach(dest => {
+                const option = document.createElement("option");
+                option.value = dest.id;
+
+                // CHANGE #1: show Name (license_number | No License)
+                const displayName = dest.name || dest.alias || "Unnamed";
+                const licenseText = dest.license_number ? ` (${dest.license_number})` : ` (No License)`;
+                option.textContent = displayName + licenseText;
+
+                select.appendChild(option);
+            });
+        } else {
+            select.innerHTML = "<option>No destinations found</option>";
+        }
+    } catch (error) {
+        console.error("Error fetching destinations:", error);
+        select.innerHTML = "<option>Error loading destinations</option>";
+    }
+
+    // Selection handler
+    select.addEventListener("change", () => {
+        const selectedDest = destinations.find(d => d.id == select.value);
+        if (!selectedDest) return;
+
+        const salesOrderFields = document.querySelectorAll("input[data-salesorder-customfield-id]");
+        let field1 = null, field2 = null;
+
+        salesOrderFields.forEach(field => {
+            const fieldId = field.getAttribute("data-salesorder-customfield-id");
+            if (fieldId == "7631921000000094128") field1 = field;
+            if (fieldId == "7631921000000094132") field2 = field;
+        });
+
+        const addressField = document.querySelector("input[name='address'], textarea[name='address']");
+        const cityField = document.querySelector("input[name='city']");
+        const countryField = document.querySelector("input[name='country']");
+        const stateField = document.querySelector("select[name='state']");
+        const zipField = document.querySelector("input[name='postal_code']");
+        const telephoneField = document.querySelector("input[name='telephone']");
+        const firstNameField = document.querySelector("input[name='first_name'], input[name='firstname']");
+        const lastNameField = document.querySelector("input[name='last_name'], input[name='lastname']");
+        const emailField = document.querySelector("input[name='email'], input[name='email_address']");
+
+        function setFieldValue(field, value) {
+            if (field) {
+                field.value = value || "";
+                field.dispatchEvent(new Event("input", { bubbles: true }));
+                field.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+        }
+
+        [
+            addressField, cityField, stateField, zipField, countryField,
+            field1, field2, telephoneField, firstNameField, lastNameField, emailField
+        ].forEach(f => setFieldValue(f, ""));
+
+        const stateAbbreviations = {
+            AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
+            CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
+            HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas",
+            KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland", MA: "Massachusetts",
+            MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri", MT: "Montana",
+            NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico",
+            NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio", OK: "Oklahoma",
+            OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina",
+            SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont",
+            VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming"
+        };
+
+        const abbreviation = selectedDest.state;
+        setFieldValue(field1, selectedDest.id);
+        setFieldValue(cityField, selectedDest.city);
+
+        // CHANGE #2: store only the Name (fallback to alias)
+        setFieldValue(field2, selectedDest.name || selectedDest.alias || "Unnamed");
+
+        setFieldValue(addressField, selectedDest.address_line_1);
+        setFieldValue(countryField, selectedDest.country);
+        setTimeout(() => setFieldValue(stateField, abbreviation), 300);
+        setFieldValue(zipField, selectedDest.postal_code || selectedDest.zip_code);
+
+        if (Array.isArray(selectedDest.contacts) && selectedDest.contacts.length > 0) {
+            const c = selectedDest.contacts.find(c => c.is_primary == 1) || selectedDest.contacts[0];
+            setFieldValue(firstNameField, c.first_name);
+            setFieldValue(lastNameField, c.last_name);
+            setFieldValue(emailField, c.email);
+            setFieldValue(telephoneField, c.phone_number);
+        }
+    });
+}
+
+// Run once on load
+document.addEventListener("DOMContentLoaded", loadDestinations);
+
+// Detect checkout edit modal or dynamic updates
+const observer = new MutationObserver(() => {
+    if (!document.querySelector(".destination-container") &&
+        document.querySelector("[data-zs-input-container]")) {
+        console.log("🔁 Edit checkout form detected, reloading destinations...");
+        loadDestinations();
+    }
+});
+observer.observe(document.body, { childList: true, subtree: true });
+</script>
+<style>
+  [data-custom-qty], .custom-qty-input {
+    width: 150px;
+    border: 1px solid #E7E7E7;
+    border-radius: 3px;
+    margin-block-end: 1rem;
+    padding: 8px;
+  }
+
+  [data-custom-qty]::-webkit-inner-spin-button,
+  [data-custom-qty]::-webkit-outer-spin-button,
+  .custom-qty-input::-webkit-inner-spin-button,
+  .custom-qty-input::-webkit-outer-spin-button {
+    opacity: 1;
+  }
+
+  .uom-label {
+    font-style: italic;
+    font-weight: normal;
+  }
+.destination-container {
+    margin-top: 12px;
+    margin-bottom: 26px;
+    order: -2;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+}
+input#zs-shipping-email-address {
+    order: 0;
+}
+.theme-form-col {
+    display: flex;
+    flex-direction: column;
+}
+.destination-container label {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+    display: block;
+    margin-bottom: 6px;
+}
+.destination-select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+.destination-select:hover {
+    border-color: #999;
+}
+input[data-salesorder-customfield-id="7631921000000094128"] {
+    display: none;
+}
+input[data-custom-field-id="7631921000000094132"]
+{
+  border-radius:0px !important;
+  }  
+ .theme-product-varients-row {
+    width: 100% !important;
+    padding-bottom: 0px !important;
+    padding-left: 0px !important;
+}
+.theme-product-quantity-cart-area {
+    border-block-start: none !important;
+}
+input.custom-qty-input {
+    position: relative;
+    top: 8px;
+}
+</style>
