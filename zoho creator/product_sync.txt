@@ -1,4 +1,9 @@
 settings = Flourish_Settings[ID != 0];
+if(input.Brand == null || input.Brand.isEmpty())
+{
+	info "❌ Sync stopped: No brand selected.";
+	return;
+}
 // Get Commerce API settings
 auth_header = input.Auth_header;
 apiUrl = input.Api_Url;
@@ -66,6 +71,7 @@ if(settings != null)
 	brandParams = "";
 	brandIds = input.Brand;
 	facility = input.Facility;
+	info facility;
 	for each  brandId in brandIds
 	{
 		brandName = brandId;
@@ -85,7 +91,8 @@ if(settings != null)
 		headers:headers
 	];
 	facility_data = response.get("data");
-	facility_id = facility_data.get(0).get("id");
+	facility_id = input.Facility_Id;
+	info facility_id;
 	headers_with_facility = Map();
 	headers_with_facility.put("x-api-key",auth_header);
 	headers_with_facility.put("FacilityID",facility_id);
@@ -294,7 +301,7 @@ if(settings != null)
 							{
 								commerce_item_data.put("description","");
 							}
-							commerce_item_data.put("product_short_description","");
+							commerce_item_data.put("product_short_description"," ");
 							commerce_item_data.put("category_id",category_id);
 							commerce_item_data.put("product_type","goods");
 							commerce_item_data.put("variant_type","inventory");
@@ -356,21 +363,27 @@ if(settings != null)
 								cf_second = Map();
 								cf_second.put("customfield_id","6866972000000725541");
 								Uomname = input.Uom;
-								// Set value based on UOM check
-								if(Uomname.isEmpty())
-								{
-									cf_second.put("value",false);
-								}
+								cf_value = false;
 								if(Uomname != null && !Uomname.isEmpty() && Uomname.contains(cf_uom_value))
 								{
-									cf_second.put("value",true);
+									cf_value = true;
 								}
-								else
-								{
-									cf_second.put("value",false);
-								}
+								cf_second.put("value",cf_value);
 								variant_custom_fields.add(cf_second);
-								// Only add custom fields if they have values
+								// Add "simple" tag only when cf_value == false
+								if(cf_value == false)
+								{
+									tag_list = list();
+									tag_list.add("simple");
+									commerce_item_data.put("tags",tag_list);
+								}
+								// Add "varient" tag only when cf_value == true
+								if(cf_value == true)
+								{
+									tag_list = list();
+									tag_list.add("varient");
+									commerce_item_data.put("tags",tag_list);
+								}
 								if(variant_custom_fields.size() > 0)
 								{
 									variant_data.put("custom_fields",variant_custom_fields);
