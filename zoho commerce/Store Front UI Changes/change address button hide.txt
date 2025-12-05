@@ -1,0 +1,40 @@
+<script>
+function updateChangeButtonVisibility() {
+    const dispatchStep = document.querySelector('[data-zs-checkout-nav-shipping-methods]');
+    const changeBtn = document.querySelector('[data-zs-theme-change-address]');
+
+    console.log("Checking elements...");
+
+    if (!changeBtn) {
+        console.log(" Change button NOT found in DOM yet.");
+        return;
+    }
+
+    if (!dispatchStep) {
+        console.log(" Dispatch step NOT found.");
+        return;
+    }
+
+    if (dispatchStep.classList.contains('active')) {
+        console.log(" Dispatch is ACTIVE → showing Change button");
+        changeBtn.style.display = 'inline-block';
+        changeBtn.disabled = false;
+    } else {
+        console.log(" Dispatch NOT active → hiding Change button");
+        changeBtn.style.display = 'none';
+        changeBtn.disabled = true;
+    }
+}
+
+// Retry every 500ms because Zoho checkout loads elements dynamically
+const interval = setInterval(() => {
+    updateChangeButtonVisibility();
+}, 500);
+
+// Also check on clicks
+document.addEventListener('click', () => {
+    console.log("User clicked → rechecking...");
+    updateChangeButtonVisibility();
+});
+
+</script>

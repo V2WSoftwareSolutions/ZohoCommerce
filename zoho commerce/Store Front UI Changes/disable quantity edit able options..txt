@@ -1,0 +1,97 @@
+<!--disable the qunatity editable option-->
+<script>
+(function () {
+  // Read "Has variants" value for a single cart item
+  function getHasVariantValue(cartItem) {
+    const infoLis = cartItem.querySelectorAll(".theme-cart-item-info ul li");
+    let value = null;
+
+    infoLis.forEach(function (li) {
+      const firstNode = li.childNodes[0];
+      let labelText = "";
+
+      if (firstNode && firstNode.textContent) {
+        labelText = firstNode.textContent.trim().toLowerCase();
+      }
+
+      if (labelText.indexOf("has variants") === 0) {
+        const span = li.querySelector("span");
+        value = span ? span.textContent.trim().toLowerCase() : "";
+      }
+    });
+
+    return value; // "true" / "false" / null
+  }
+
+  // Apply lock/unlock on all cart items
+  function applyQtyLock() {
+    const cartItems = document.querySelectorAll(".theme-cart-item");
+    if (!cartItems.length) {
+      // Cart not rendered yet – retry
+      setTimeout(applyQtyLock, 300);
+      return;
+    }
+
+    cartItems.forEach(function (item) {
+      const hasVariantVal = getHasVariantValue(item);
+      const qtyInput = item.querySelector("input[data-zs-quantity]");
+      if (!qtyInput) return;
+
+      if (hasVariantVal === "true") {
+        // Has variants = true → lock manual editing
+        qtyInput.setAttribute("readonly", "readonly");
+        qtyInput.dataset.v2wLocked = "1"; // custom flag
+        // console.log("Qty locked for item with variants");
+      } else {
+        // Has variants = false → default Zoho behaviour
+        qtyInput.removeAttribute("readonly");
+        delete qtyInput.dataset.v2wLocked;
+        // console.log("Qty unlocked (no variants)");
+      }
+    });
+  }
+
+  // Block typing / copy / paste ONLY when locked
+  ["copy", "cut", "paste", "keydown", "contextmenu"].forEach(function (evt) {
+    document.addEventListener(
+      evt,
+      function (e) {
+        const input = e.target.closest("input[data-zs-quantity]");
+        if (!input || !input.dataset.v2wLocked) return; // only act on locked ones
+
+        if (evt === "keydown") {
+          const k = e.key;
+          // Allow navigation keys
+          if (
+            k === "Tab" ||
+            k === "Shift" ||
+            k === "ArrowLeft" ||
+            k === "ArrowRight" ||
+            k === "ArrowUp" ||
+            k === "ArrowDown"
+          ) {
+            return;
+          }
+        }
+
+        // Prevent any manual change
+        e.preventDefault();
+      },
+      true
+    );
+  });
+
+  // Run once on load
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", applyQtyLock);
+  } else {
+    applyQtyLock();
+  }
+
+  // Optional: watch for SPA / cart updates and re-apply
+  const observer = new MutationObserver(function () {
+    applyQtyLock();
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+})();
+</script>

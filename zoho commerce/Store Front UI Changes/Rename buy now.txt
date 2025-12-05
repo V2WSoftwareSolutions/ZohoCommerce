@@ -1,0 +1,24 @@
+<!--Rename bye now-->
+<script>
+(function renameViewDetails() {
+
+    function updateButtons() {
+        // Select all spans having the Zoho button attribute
+        const btns = document.querySelectorAll("span[data-theme-cart-button-text]");
+        btns.forEach(span => {
+            const txt = span.textContent.trim().toLowerCase();
+            if (txt === "view details") {
+                span.textContent = "Buy Now";
+            }
+        });
+    }
+
+    // Run once immediately
+    updateButtons();
+
+    // Run again after AJAX/lazy load updates
+    const observer = new MutationObserver(() => updateButtons());
+    observer.observe(document.body, { childList: true, subtree: true });
+
+})();
+</script>

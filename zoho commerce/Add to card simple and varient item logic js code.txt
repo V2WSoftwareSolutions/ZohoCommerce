@@ -766,3 +766,110 @@ function updateVariantsQuantityDisplay(cartItem, totalQuantity, conversionFactor
     });
 }
 </script>
+<script>
+(function () {
+  console.log("🔒 Minus disabled when qty == caseQty");
+
+  const MIN_MSG = "This is the minimum case pack size, so the quantity can’t go down.";
+
+  // Get Has variants + Case Quantity  
+  function getVariantInfo(cartRow) {
+    const infoUl = cartRow.querySelector(".theme-cart-item-info ul");
+    let hasVariants = false;
+    let caseQty = 1;
+
+    if (!infoUl) return { hasVariants, caseQty };
+
+    infoUl.querySelectorAll("li").forEach(li => {
+      const text = li.textContent.trim();
+
+      // Has variants: <span>true</span>
+      if (text.includes("Has variants")) {
+        const span = li.querySelector("span");
+        if (span && span.textContent.trim().toLowerCase() === "true") {
+          hasVariants = true;
+        }
+      }
+
+      // Case Quantity: <span>10</span>
+      if (text.includes("Case Quantity")) {
+        const span = li.querySelector("span");
+        if (span) {
+          const v = parseInt(span.textContent.trim(), 10);
+          if (!isNaN(v) && v > 0) caseQty = v;
+        }
+      }
+    });
+
+    return { hasVariants, caseQty };
+  }
+
+  // Update minus disabled logic
+  function updateMinusState(cartRow) {
+    const { hasVariants, caseQty } = getVariantInfo(cartRow);
+    const qtyInput = cartRow.querySelector("input[data-zs-quantity]");
+    const minusBtn = cartRow.querySelector(".theme-product-list-quantity-decrease");
+    if (!qtyInput || !minusBtn) return;
+
+    const current = parseInt(qtyInput.value, 10) || 0;
+
+    if (hasVariants && current === caseQty) {
+      // Disable minus + show tooltip
+      minusBtn.classList.add("caseqty-minus-disabled");
+      minusBtn.style.pointerEvents = "none";
+      minusBtn.style.opacity = "0.4";
+      minusBtn.setAttribute("title", MIN_MSG);   // <-- Tooltip added
+    } else {
+      // Enable minus
+      minusBtn.classList.remove("caseqty-minus-disabled");
+      minusBtn.style.pointerEvents = "auto";
+      minusBtn.style.opacity = "1";
+      minusBtn.removeAttribute("title");         // <-- Remove tooltip
+    }
+  }
+
+  // Attach listeners to a row
+  function setupRow(cartRow) {
+    if (cartRow._minusBound) return;
+    cartRow._minusBound = true;
+
+    const qtyInput = cartRow.querySelector("input[data-zs-quantity]");
+    const plusBtn =
+      cartRow.querySelector(".theme-product-list-quantity-increase input[type='button']") ||
+      cartRow.querySelector(".theme-product-list-quantity-increase");
+    const minusBtn =
+      cartRow.querySelector(".theme-product-list-quantity-decrease input[type='button']") ||
+      cartRow.querySelector(".theme-product-list-quantity-decrease");
+
+    if (!qtyInput || !plusBtn || !minusBtn) return;
+
+    qtyInput.addEventListener("input", () => updateMinusState(cartRow));
+    qtyInput.addEventListener("change", () => updateMinusState(cartRow));
+
+    plusBtn.addEventListener("click", () => {
+      setTimeout(() => updateMinusState(cartRow), 120);
+    });
+
+    minusBtn.addEventListener("click", () => {
+      setTimeout(() => updateMinusState(cartRow), 120);
+    });
+
+    updateMinusState(cartRow);
+  }
+
+  // Setup all rows
+  function init() {
+    document.querySelectorAll(".theme-cart-table-row").forEach(setupRow);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else init();
+
+  // Re-run after AJAX updates
+  const cont = document.querySelector(".theme-shopping-cart-table-container");
+  if (cont && window.MutationObserver) {
+    new MutationObserver(() => init()).observe(cont, { childList: true, subtree: true });
+  }
+})();
+</script>

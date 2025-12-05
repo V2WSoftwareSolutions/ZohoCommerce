@@ -1,0 +1,30 @@
+<!---------Add Payment Method label----->
+<script>
+
+(function () {
+  function addPaymentHeader() {
+    // the flex container that holds the COD option
+    const paymentList = document.querySelector(
+      ".theme-checkout-payment-list[data-zs-checkout-pg-option='Cash on Delivery']"
+    );
+    if (!paymentList) return;
+    // avoid duplicates
+    if (document.getElementById("payment-method-title")) return;
+    // create title with same style as "Shipping Methods"
+    const title = document.createElement("div");
+    title.id = "payment-method-title";
+    title.className = "theme-checkout-details-title";
+    title.textContent = "Payment Method";
+    // insert BEFORE the flex container so it’s on its own line
+    paymentList.parentNode.insertBefore(title, paymentList);
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", addPaymentHeader);
+  } else {
+    addPaymentHeader();
+  }
+  // re-run if checkout DOM is rebuilt
+  const observer = new MutationObserver(addPaymentHeader);
+  observer.observe(document.body, { childList: true, subtree: true })
+})();
+</script>

@@ -1,0 +1,22 @@
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Hide the "Continue" button inside the "zs-address-box-form" form
+  document.querySelectorAll('#zs-address-box-form button.zpbutton').forEach(btn => {
+    if (btn.textContent.trim() === 'Continue') {
+      btn.style.display = 'none'; // Hide the 'Continue' button
+    }
+  });
+
+  // Alternatively, if the buttons have different data attributes
+  document.querySelectorAll('#zs-address-box-form button[data-zs-checkout-continue-address]').forEach(btn => {
+    btn.style.display = 'none'; // Hide the button with the continue address attribute
+  });
+});
+</script>
+<style>
+  /* Ensure the element is hidden with higher specificity */
+body.page-checkout [data-zs-checkout-layout-group-name="revieworder"] {
+  display: none !important;
+}
+
+</style>

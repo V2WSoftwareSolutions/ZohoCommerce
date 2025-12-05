@@ -1,0 +1,32 @@
+<!----------------- Add Quantity lable ------>
+<script>
+(function () {
+    function addQtyLabel() {
+        const qtyInput = document.querySelector("input.custom-qty-input[data-custom-qty]");
+        if (!qtyInput) return;
+
+        // Prevent duplicates
+        if (document.querySelector("#qty-label")) return;
+
+        // Create label using EXACT SAME STYLES
+        const label = document.createElement("div");
+        label.id = "qty-label";
+        label.className = "theme-product-variant-label theme-custom-field-label";
+        label.innerText = "Quantity";
+
+        // Insert before the input box
+        qtyInput.parentNode.insertBefore(label, qtyInput);
+    }
+
+    // Run when page loads
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", addQtyLabel);
+    } else {
+        addQtyLabel();
+    }
+
+    // Also re-run when variants change (Zoho dynamic reload)
+    const observer = new MutationObserver(addQtyLabel);
+    observer.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
