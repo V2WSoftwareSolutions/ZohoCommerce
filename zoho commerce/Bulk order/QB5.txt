@@ -1,0 +1,79 @@
+<div id="zs-reorder-dom-template" style="display:none">
+
+  <div class="product-list-container" data-zs-order-record data-zs-order-id="">
+    <div class="product-label product-label-price" data-zs-order-number style="flex: 0 1 300px;"></div>
+     <div class="product-label product-label-price" data-zs-order-date style="flex: 0 1 300px;"></div>
+     <div class="product-label product-label-quantity" data-zs-order-items-count style="flex: 0 1 300px;"></div>
+     <div class="product-label product-label-quantity" data-zs-order-actions style="flex: 0 1 400px;">
+
+       <a href="javascript:;" data-zs-reorder-btn class="zpbutton zpbutton-type-primary zpbutton-style-roundcorner zpbutton-size-sm" onclick="reorderClick()" >
+         <span data-zs-reorder-btn-text>Re-order</span>
+       </a>
+
+       <a href="javascript:;" data-zs-show-order-btn class="zpbutton zpbutton-type-primary zpbutton-style-roundcorner zpbutton-size-sm zpbutton-outline" onclick="showHideOrderClick()">
+         <span data-zs-show-order-btn-text>Show Order</span>
+       </a>
+
+     </div>
+  </div>
+
+  <div class="product-list-container" data-zs-order-products-table data-zs-order-id="" style="display:none; padding:20px;background:#f3f3f3">
+    <div class="product-purchase-container">
+      <div class="product-purchase-container-head" style="background:#000000">
+        <div class="product-label product-label-image">Image</div>
+        <div class="product-label product-label-name">Product Name</div>
+        <div class="product-label product-label-price">Rate</div>
+        <div class="product-label product-label-quantity">Quantity</div>
+         <div class="product-label product-label-quantity">Action</div>
+      </div>
+      <div class="product-purchase-container-body">
+        <div data-reorder-products-list-container class="product-collection-container toggle-active">
+            <input type="checkbox" checked class="product-collection-container-head-toggle">
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+
+  <div class="product-list-container" data-zs-order-products-record data-zs-product-id="">
+    <div class="product-info product-image">
+      <img data-zs-order-products-image src="/zs-common/images/no-preview-image.jpg">
+    </div>
+    <div class="product-info product-name" data-zs-order-products-name></div>
+    <div class="product-info product-price" data-zs-order-products-rate></div>
+    <div class="product-info product-quantity" data-zs-order-products-quantity>
+
+      <div class="theme-product-list-quantity-addcart">
+         <div class="theme-product-list-quantity">
+            <div class="theme-product-list-quantity-decrease">
+               <svg viewBox="0 0 26 24" xmlns="http://www.w3.org/2000/svg">
+                  <path fill-rule="nonzero" d="M8 11h10v2H8z"></path>
+               </svg>
+               <input type="button" class="theme-cart-qty-inc-dec" onclick="decreaseCount(this)">
+            </div>
+            <input type="text" name="qty" data-zs-product-hasvariant="false" data-zs-product-variant-id="" id="" data-quantity="" maxlength="999" title="quantity" value="1" onkeypress="return productQuantity(event);" data-zs-quantity="" class="theme-product-list-quantity-field">
+            <div class="theme-product-list-quantity-increase">
+               <svg viewBox="0 0 26 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 11V7h2v4h4v2h-4v4h-2v-4H8v-2h4z" fill-rule="nonzero"></path>
+               </svg>
+               <input type="button" class="theme-cart-qty-inc-dec" onclick="increaseCount(this)">
+            </div>
+         </div>
+      </div>
+
+    </div>
+     <div class="product-info product-price" data-zs-order-products-actions>
+
+       <a href="javascript:;" data-zs-order-products-btn data-zs-product-variant-id="" data-zs-variant-id="" class="zpbutton zpbutton-type-primary zpbutton-style-roundcorner zpbutton-size-sm" onclick="orderProductAddToCart()">
+         <span data-zs-order-products-btn-text>Add to cart</span>
+       </a>
+
+     </div>
+  </div>
+
+
+
+</div>

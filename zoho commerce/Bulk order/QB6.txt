@@ -1,0 +1,27 @@
+<div id="logged-out-error" style="display: none;">
+  <label> Please <a href="/signin">log in</a> to see your orders. </label>
+</div>
+
+<div id="reorder-container" style="display: none;">
+
+  <div class="product-purchase-container">
+
+    <div class="product-purchase-container-head">
+      <div class="product-label product-label-price" style="flex: 0 1 300px;">Order Number</div>
+       <div class="product-label product-label-price" style="flex: 0 1 300px;">Date</div>
+       <div class="product-label product-label-quantity" style="flex: 0 1 300px;">Total items</div>
+       <div class="product-label product-label-quantity" style="flex: 0 1 400px;">Action</div>
+    </div>
+    <div class="product-purchase-container-body">
+      <div id="reorder-list-container" class="product-collection-container toggle-active">
+          <input type="checkbox" checked class="product-collection-container-head-toggle">
+
+
+
+
+      </div>
+    </div>
+
+  </div>
+
+</div>

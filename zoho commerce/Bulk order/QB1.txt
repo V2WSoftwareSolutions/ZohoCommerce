@@ -1,0 +1,94 @@
+<div id="zs-dom-template" style="display:none">
+
+  <div class="product-list-container" data-zs-product-record data-zs-product-id="">
+     <div class="product-info product-image"><img data-zs-product-image src="/zs-common/images/no-preview-image.jpg"></div>
+
+     <div class="product-info product-name">
+        <div class="product-name-inner" data-zs-product-name></div>
+        <div class="product-variant-container" data-zs-product-variant-container>
+
+        </div>
+     </div>
+
+     <div class="product-info product-price" data-zs-pricings-parent-container>
+     </div>
+
+     <div class="product-info product-quantity" data-zs-product-quantity-container product-quantity-error="pid-">
+        <label class="responsive-label">Quantity</label><label class="outofstock-label">Out of stock</label>
+        <div class="theme-product-list-quantity-addcart">
+           <div class="theme-product-list-quantity">
+              <div class="theme-product-list-quantity-decrease">
+                 <svg viewBox="0 0 26 24" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="nonzero" d="M8 11h10v2H8z"></path>
+                 </svg>
+                 <input type="button" class="theme-cart-qty-inc-dec" onclick="decreaseCount(this)">
+              </div>
+              <input type="text" name="qty" data-zs-product-hasvariant="false" data-zs-product-variant-id="" id="" data-quantity="" maxlength="999" title="quantity" value="0" onkeypress="return productQuantity(event);" data-zs-quantity="" class="theme-product-list-quantity-field">
+              <div class="theme-product-list-quantity-increase">
+                 <svg viewBox="0 0 26 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 11V7h2v4h4v2h-4v4h-2v-4H8v-2h4z" fill-rule="nonzero"></path>
+                 </svg>
+                 <input type="button" class="theme-cart-qty-inc-dec" onclick="increaseCount(this)">
+              </div>
+           </div>
+        </div>
+     </div>
+
+     <div class="product-info product-price" data-zs-product-action-container>
+        <a href="javascript:;" data-zs-add-to-cart data-zs-product-variant-id="" class="zpbutton zpbutton-type-primary zpbutton-style-roundcorner zpbutton-size-sm" onclick="customAddProductToCart()">
+           <span data-theme-cart-button-text="theme-cart-button-text">Add to Cart</span>
+           <span class="theme-cart-button-loading-container" data-theme-cart-button-loading="theme-cart-button-loading" style="display:none;">
+              Adding...
+              <div class="theme-cart-button-loading-dots"><span></span><span></span><span></span></div>
+           </span>
+        </a>
+     </div>
+
+     <div data-theme-error-cart-elm data-theme-error="theme-error-message-" style="display: none;"></div>
+  </div>
+
+
+  <!-- START: VARIANTS-ATTRIBUTE CONTAINER -->
+
+  <select data-zs-variants-attribute-container style="display: none;position:absolute;width:0px;height:0px" data-zs-variants>
+  </select>
+
+  <option value="1191439000000953577" data-zs-attributes="" data-zs-images=""></option>
+
+  <!-- END: VARIANTS-ATTRIBUTE CONTAINER -->
+
+
+  <!-- START: SELECT ATTRIBUTE CONTAINER -->
+  <select data-zs-attribute-select-container data-zs-attribute-select data-zs-attribute-name="">
+  </select>
+
+  <option value="" data-zs-attribute-option></option>
+  <!-- END: SELECT ATTRIBUTE CONTAINER -->
+
+  <!-- START: COLOR ATTRIBUTE CONTAINER -->
+  <div class="theme-product-color-variantions" data-zs-attribute-color-container data-zs-attribute-select data-zs-attribute-name="">
+  </div>
+
+  <span class="theme-product-color" data-zs-attribute-color-record>
+    <label data-theme-color-label style="background:#" onclick="selectcolor(this,'Color')">
+      <input type="radio" name="" data-zs-attribute-option="" value="" data-text="">
+    </label>
+  </span>
+  <!-- END: COLOR ATTRIBUTE CONTAINER -->
+
+  <!-- START: ATTRIBUTE ERROR CONTAINER -->
+  <div class="theme-variant-error" data-theme-error-variant-elm data-error-select-flag="" data-error-select="" data-variant-error="theme-data-error-" style="color: #FF4949; display: none;"></div>
+  <!-- END: ATTRIBUTE ERROR CONTAINER -->
+
+
+
+
+
+  <!-- START: PRICING CONTAINER -->
+  <div class="theme-product-price-area" data-zs-pricings-container data-zs-pricings data-zs-variant-id="">
+	</div>
+
+  <span class="theme-product-total-price-lable" data-zs-pricings-record data-zs-selling-price=""></span>
+  <!-- END: PRICING CONTAINER -->
+
+</div>

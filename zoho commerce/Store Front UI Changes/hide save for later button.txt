@@ -1,0 +1,28 @@
+<script>
+(function() {
+    function hideSaveForLaterButton() {
+        // Run only on cart page
+        if (window.zs_view === "/cart" || window.location.pathname === "/cart") {
+
+            // Wait until elements are rendered
+            const interval = setInterval(() => {
+                const saveButtons = document.querySelectorAll('span[data-zs-save-for-later]');
+                if (saveButtons.length > 0) {
+                    saveButtons.forEach(btn => {
+                        btn.style.display = "none";   // Hide the button
+                    });
+                    console.log("✅ Save for Later button hidden");
+                    clearInterval(interval);
+                }
+            }, 300);
+
+            setTimeout(() => clearInterval(interval), 5000); // Stop after 5s max
+        } else {
+            console.log("ℹ️ Not cart page. No change.");
+        }
+    }
+
+    // Listen when page content loads
+    document.addEventListener("DOMContentLoaded", hideSaveForLaterButton);
+})();
+</script>

@@ -1,0 +1,877 @@
+<script>
+
+  /* START: MEESAGES/VALUES CONSTANTS */
+  var EMPTY = "";
+  var BLOCK = "block";
+  var NONE = "none";
+  var OPTION = "option";
+  var LABEL = "label";
+  var SRC = "src";
+  var ROOT_CATEGORY = "-1";
+  var ATTRIBUTE = "attribute";
+  var ATTRIBUTE_OPTION_ID = "attribute_option_id";
+  var OUT_OF_STOCK = "Out of Stock";
+  var COLOUR = "colour";
+  var SELECT = "Select";
+  var THEME_DATA_ERROR_ = "theme-data-error-";
+  var THEME_ERROR_MESSAGE_ = "theme-error-message-";
+  var THEME_ERROR_MESSAGE_LIST_ = "theme-error-message-list-";
+  var ZS_EVENT_CUSTOM_FIELD_VALIDATION_ERROR  = "zs-event-custom-field-validation-error";
+  /* END: MEESAGES/VALUES CONSTANTS */
+
+  /* START: ID CONSTANTS */
+  var PRODUCT_CATEGORY_SELECT = "product-category-select";
+  var PRODUCT_SEARCH = "product-search";
+  var PAGINATION_PREV_PAGE = "pagination-prev-page";
+  var PAGINATION_NEXT_PAGE = "pagination-next-page";
+  var PAGINATION_TOTAL_PAGES = "pagination-total-pages";
+  var PAGE_NUMBER = "page-number";
+  var PAGE_NUMBER_ELM = "page-number-elm";
+  var PRODUCT_LIST_CONTAINER = "product-list-container";
+  var DOM_TEMPLATE = "zs-dom-template";
+  /* END: ID CONSTANTS */
+
+  /* START: DATA ATTRIBUTE CONSTANTS */
+  var DATA_PRODUCT_RECORD = "data-zs-product-record";
+  var DATA_TEXT = "data-text";
+  var DATA_PRODUCT_ID = "data-zs-product-id";
+  var DATA_PRODUCT_VARIANT_ID = "data-zs-product-variant-id";
+  var DATA_VARIANT_ID = "data-zs-variant-id";
+  var DATA_ADD_TO_CART = "data-zs-add-to-cart";
+  var DATA_VARIANTS = "data-zs-variants";
+  var DATA_ATTRIBUTES = "data-zs-attributes";
+  var DATA_ATTRIBUTE_SELECT = "data-zs-attribute-select";
+  var DATA_ATTRIBUTE_NAME = "data-zs-attribute-name";
+  var DATA_ATTRIBUTE_OPTION = "data-zs-attribute-option";
+  var DATA_THEME_COLOR_LABEL = "data-theme-color-label";
+  var DATA_PRODUCT_IMAGE = "data-zs-product-image";
+  var DATA_PRODUCT_NAME = "data-zs-product-name";
+  var DATA_PRODUCT_PRICE_AMOUNT = "data-product-price-amount";
+  var DATA_VARIANTS_ATTRIBUTE_CONTAINER = "data-zs-variants-attribute-container";
+  var DATA_PRODUCT_VARIANT_CONTAINER = "data-zs-product-variant-container";
+  var DATA_ATTRIBUTE_SELECT_CONTAINER = "data-zs-attribute-select-container";
+  var DATA_ATTRIBUTE_COLOR_CONTAINER = "data-zs-attribute-color-container";
+  var DATA_ATTRIBUTE_COLOR_RECORD = "data-zs-attribute-color-record";
+  var DATA_PRODUCT_ACTION_CONTAINER = "data-zs-product-action-container";
+  var DATA_PRICINGS = "data-zs-pricings";
+  var DATA_PRICINGS_PARENT_CONTAINER = "data-zs-pricings-parent-container";
+  var DATA_PRICINGS_CONTAINER = "data-zs-pricings-container";
+  var DATA_PRICINGS_RECORD = "data-zs-pricings-record";
+  var DATA_SELLING_PRICE = "data-zs-selling-price";
+  var DATA_THEME_ERROR = "data-theme-error";
+  var DATA_THEME_ERROR_CART_ELM = "data-theme-error-cart-elm";
+  var DATA_THEME_ERROR_VARIANT_ELM = "data-theme-error-variant-elm";
+  var DATA_THEME_ERROR_SELECT = "data-error-select";
+  var DATA_THEME_ERROR_SELECT_FLAG = "data-error-select-flag";
+  var DATA_THEME_VARIANT_ERROR = "data-variant-error";
+  /* END: DATA ATTRIBUTE CONSTANTS */
+
+  /* START: ENUM CONSTANTS */
+  var QUICK_BUY_EVENT_TYPE = {
+    LOAD                    : "load",
+    CLICK                   : "click",
+    CHANGE                  : "change",
+    SCROLL                  : "scroll",
+    KEY_DOWN                : "keydown",
+    KEY_UP                  : "keyup",
+    FOCUS_OUT               : "focusout"
+  }
+  /* END: ENUM CONSTANTS */
+
+  var current_page_number = 1;
+  var has_more_page = false;
+  var restrict_out_of_stock_purchase = true;
+  var currency_obj = {};
+
+
+  /* START: INIT METHODS */
+
+  function quickBuyInit() {
+    getOrgMeta();
+    //getCategories();
+    bindFilterElements();
+    //loadProductListBasedOnSelection();
+  }
+
+  function bindFilterElements() {
+    var product_search = document.getElementById(PRODUCT_SEARCH);
+    product_search.addEventListener(QUICK_BUY_EVENT_TYPE.KEY_UP, searchProductBasedOnName);
+
+    var product_category_select = document.getElementById(PRODUCT_CATEGORY_SELECT);
+    product_category_select.addEventListener(QUICK_BUY_EVENT_TYPE.CHANGE, resetAndLoadProductList);
+
+    var pagination_prev_page = document.getElementById(PAGINATION_PREV_PAGE);
+    pagination_prev_page.addEventListener(QUICK_BUY_EVENT_TYPE.CLICK, paginationPrevElmClick);
+
+    var pagination_next_page = document.getElementById(PAGINATION_NEXT_PAGE);
+    pagination_next_page.addEventListener(QUICK_BUY_EVENT_TYPE.CLICK, paginationNextElmClick);
+  }
+
+  /* END: INIT METHODS */
+
+  /* START: UTIL METHODS */
+
+  function getFormattedCurrency(value, currency_code) {
+    var locale = navigator.language || navigator.browserLanguage || navigator.languages[0] || 'en';
+    return new Intl.NumberFormat(locale, {
+        style: 'decimal',
+        currency: currency_code,
+        maximumFractionDigits: 2,
+        minimumFractionDigits: 2
+    }).format(value);
+  }
+
+  /* END: UTIL METHODS */
+
+
+  /* START: CATEGORY METHODS */
+
+  function getCategories() {
+    $X.get({
+      url: "/zos-api/categories",
+      handler: getCategoriesHandler
+    });
+  }
+
+  function getCategoriesHandler() {
+    var res = JSON.parse(this.responseText);
+    var categories_list = res.categories;
+    setProductCategoryOptions(categories_list);
+    loadProductListBasedOnSelection();
+  }
+
+  function setProductCategoryOptions(categories_list) {
+    var product_category_select = document.getElementById(PRODUCT_CATEGORY_SELECT);
+    for(var i = 0; i < categories_list.length; i++) {
+      var categories = categories_list[i];
+      if(categories.category_id != ROOT_CATEGORY) {
+        var product_category_option = document.createElement(OPTION);
+        product_category_option.value = categories.category_id;
+        setInnerHTMLForElement(product_category_option, categories.name);
+        product_category_select.appendChild(product_category_option);
+      }
+    }
+  }
+
+  function getOrgMeta() {
+    $X.get({
+      url: "/zos-api/organizations/meta",
+      handler: orgMetaHandler
+    });
+  }
+
+  function orgMetaHandler() {
+    var res = JSON.parse(this.responseText);
+    currency_obj = res.data.currency;
+    restrict_out_of_stock_purchase = res.data.hostedpage_settings.restrict_out_of_stock_purchase;
+    getCategories();
+  }
+
+  /* END: CATEGORY METHODS */
+
+  /* START: PAGINATION & FILTER METHODS */
+
+  function resetAndLoadProductList() {
+    current_page_number = 1;
+    if(event.currentTarget.id == PRODUCT_SEARCH) {
+      var product_category_select = document.getElementById(PRODUCT_CATEGORY_SELECT);
+      product_category_select.value = "";
+    } else if(event.currentTarget.id == PRODUCT_CATEGORY_SELECT) {
+      var product_search = document.getElementById(PRODUCT_SEARCH);
+      product_search.value = "";
+    }
+    loadProductListBasedOnSelection();
+  }
+
+  function searchProductBasedOnName(event) {
+    if(event.keyCode == 13) {
+      resetAndLoadProductList();
+    }
+  }
+
+  function paginationPrevElmClick() {
+    if(current_page_number > 1) {
+      current_page_number = current_page_number - 1;
+      loadProductListBasedOnSelection();
+    }
+  }
+
+  function paginationNextElmClick() {
+    if(has_more_page) {
+      current_page_number = current_page_number + 1;
+      loadProductListBasedOnSelection();
+    }
+  }
+
+  function getProductCategory() {
+    var product_category_select = document.getElementById(PRODUCT_CATEGORY_SELECT);
+    return product_category_select.value;
+  }
+
+  function getSearchTerm() {
+    var product_search_elm = document.getElementById(PRODUCT_SEARCH);
+    return (product_search_elm.value).trim();
+  }
+
+  function setPageNumber() {
+    var page_number_elm = document.getElementById(PAGE_NUMBER_ELM);
+    page_number_elm.innerText = current_page_number;
+  }
+
+  /* END: PAGINATION & FILTER METHODS */
+
+
+  /* START: PRODUCT LIST METHODS */
+
+  function removePrevProductList() {
+    var product_list_container = document.getElementById(PRODUCT_LIST_CONTAINER);
+    var product_record_elms = product_list_container.querySelectorAll("[" + DATA_PRODUCT_RECORD + "]");
+    for(var i = 0; i < product_record_elms.length; i++) {
+      var product_record = product_record_elms[i];
+      product_record.remove();
+    }
+  }
+
+  function loadProductListBasedOnSelection() {
+      removePrevProductList();
+      setPageNumber();
+      var product_search_term = getSearchTerm();
+      var product_category = getProductCategory();
+      loadProductList(product_search_term, product_category);
+  }
+
+  function loadProductList(product_search_term, product_category) {
+      var collection_id = "7631921000000210193"; // default collection
+     	console.log("Loading collection API:", collection_id);
+      console.log("Search term:", product_search_term);
+      console.log("Category filter:", product_category);
+
+
+      // Always load collection first
+      $X.get({
+          url: "/zos-api/collections/" + collection_id + "?include_products=true&per_page=200&page=" + current_page_number,
+          handler: function() {
+              var res = JSON.parse(this.responseText);
+              var products_list = res.collection ? res.collection.products : [];
+              console.log("Total products in collection:", products_list.length);
+
+
+              // Apply search filter locally
+              if(product_search_term != EMPTY) {
+                  products_list = products_list.filter(function(p) {
+                      return p.name.toLowerCase().includes(product_search_term.toLowerCase());
+                  });
+                   console.log("Products after search filter:", products_list.length);
+
+              }
+
+              // Apply category filter locally
+              if(product_category != EMPTY) {
+                products_list = products_list.filter(p => {
+                  console.log("Product category for filter:", p.category_id);
+                  return p.category_id === product_category;
+                });
+              }
+            var total_items = products_list.length;
+            var per_page = 20;
+            var total_pages = Math.ceil(total_items / per_page);
+            document.getElementById("pagination-total-pages").innerText = total_pages;
+
+              // Clear and load filtered products
+              removePrevProductList();        
+              setPageNumber();
+              products_list.forEach(function(p) {
+                        console.log("Product:", p.name, "Categories:", p.category_ids);
+
+                  loadProductRecord(p);
+              });
+          }
+      });
+  }
+
+
+  // --- Search API ---
+  function getProductsBasedOnSearchTerm(product_search_term) {
+      $X.get({
+          url: "/zos-api/products?search_text=" + product_search_term + "&per_page=20&page=" + current_page_number,
+          handler: getProductsHandler
+      });
+  }
+
+  // --- Category API ---
+  function getProductsBasedOnCategory(product_category) {
+      $X.get({
+          url: "/zos-api/categories/" + product_category + "?include_products=true&per_page=20&page=" + current_page_number,
+          handler: getProductsHandler
+      });
+  }
+
+  // --- Collection API ---
+  function getProductsBasedOnCollection(collection_id) {
+      $X.get({
+          url: "/zos-api/collections/" + collection_id + "?include_products=true&per_page=20&page=" + current_page_number,
+          handler: getProductsHandler
+      });
+  }
+
+  // --- Product Handler ---
+  function getProductsHandler() {
+      var res = JSON.parse(this.responseText);
+
+      // Determine where the products are
+      var products_list = [];
+      var page_context = {};
+
+      if(getSearchTerm() != EMPTY) {
+          // Only search API results
+          products_list = res.products || [];
+          page_context = res.page_context || {};
+      } else if(getProductCategory() != EMPTY) {
+          // Only category API results
+          products_list = res.category ? res.category.products : [];
+          page_context = res.category ? res.category.page_context : {};
+      } else {
+          // Page load fallback → show collection
+          products_list = res.collection ? res.collection.products : [];
+          page_context = res.collection ? res.collection.page_context : {};
+      }
+
+      has_more_page = page_context.has_more_page || false;
+
+      for(var i = 0; i < products_list.length; i++) {
+          var product_obj = products_list[i];
+          loadProductRecord(product_obj);
+      }
+
+      product_option.initForElement(document);
+  }
+
+  function loadProductRecord(product_obj) {
+    var product_list_container = document.getElementById(PRODUCT_LIST_CONTAINER);
+    var dom_template = document.getElementById(DOM_TEMPLATE);
+    var product_record_template_container = dom_template.querySelector("[" + DATA_PRODUCT_RECORD + "]");
+    var product_record_container = product_record_template_container.cloneNode(true);
+
+    /* START: SET PRODUCT ID */
+    product_record_container.setAttribute(DATA_PRODUCT_ID, product_obj.product_id);
+    /* END: SET PRODUCT ID */
+
+    /* START: SET PRODUCT NAME */
+    var product_name_elm = product_record_container.querySelector("[" + DATA_PRODUCT_NAME + "]");
+    product_name_elm.innerText = product_obj.name;
+    /* END: SET PRODUCT NAME */
+
+    /* START: SET PRODUCT IMAGE */
+    if(product_obj.document_id != "") {
+      var src_url = "/product-images/" + product_obj.document_name + "/" + product_obj.document_id + "/400x400";
+      var product_image_elm = product_record_container.querySelector("[" + DATA_PRODUCT_IMAGE + "]");
+      product_image_elm.setAttribute(SRC, src_url);
+    }
+    /* END: SET PRODUCT IMAGE */
+
+    /* START: SET PRODUCT PRICINGS */
+    var pricings_parent_container = product_record_container.querySelector("[" + DATA_PRICINGS_PARENT_CONTAINER + "]");
+    var product_variants = product_obj.variants;
+
+    if(product_obj.has_variant) {
+      var pricings_container_template = dom_template.querySelector("[" + DATA_PRICINGS_CONTAINER + "]");
+      var pricings_container = pricings_container_template.cloneNode(true);
+      pricings_container.setAttribute(DATA_VARIANT_ID, "-1");
+      pricings_container.style.display = BLOCK;
+
+      var pricings_record_template = dom_template.querySelector("[" + DATA_PRICINGS_RECORD + "]");
+      var pricings_record = pricings_record_template.cloneNode(true);
+      pricings_record.setAttribute(DATA_SELLING_PRICE, product_obj.min_rate);
+      pricings_record.innerHTML = currency_obj.currency_symbol + getFormattedCurrency(product_obj.min_rate, currency_obj.currency_code);
+      pricings_container.appendChild(pricings_record);
+
+      pricings_parent_container.appendChild(pricings_container);
+    }
+
+    for(var m = 0; m < product_variants.length; m++) {
+      var product_variant = product_variants[m];
+
+      var pricings_container_template = dom_template.querySelector("[" + DATA_PRICINGS_CONTAINER + "]");
+      var pricings_container = pricings_container_template.cloneNode(true);
+      pricings_container.setAttribute(DATA_VARIANT_ID, product_variant.variant_id);
+      pricings_container.style.display = (!product_obj.has_variant) ? BLOCK : NONE ;
+
+      var pricings_record_template = dom_template.querySelector("[" + DATA_PRICINGS_RECORD + "]");
+      var pricings_record = pricings_record_template.cloneNode(true);
+      pricings_record.setAttribute(DATA_SELLING_PRICE, product_variant.rate);
+      pricings_record.innerHTML = currency_obj.currency_symbol + getFormattedCurrency(product_variant.rate, currency_obj.currency_code);
+      pricings_container.appendChild(pricings_record);
+
+      pricings_parent_container.appendChild(pricings_container);
+    }
+    /* END: SET PRODUCT PRICINGS */
+
+    /* START: SET PRODUCT ADD_TO_CART OR OUT_OF STOCK */
+    if(!product_obj.has_variant) {
+      var product_action_container = product_record_container.querySelector("[" + DATA_PRODUCT_ACTION_CONTAINER + "]");
+      var add_to_cart_elm = product_action_container.querySelector("[" + DATA_ADD_TO_CART + "]");
+      if(product_obj.overall_stock <= 0 && restrict_out_of_stock_purchase) {
+        //var error_html = "<label style='color: #eb4d5e;'>"+OUT_OF_STOCK+"</label>";
+        //product_action_container.innerHTML(error_html);
+        add_to_cart_elm.remove();
+        var out_of_stock_label = document.createElement(LABEL);
+        out_of_stock_label.style.color = "#eb4d5e";
+        out_of_stock_label.innerHTML = OUT_OF_STOCK;
+        product_action_container.appendChild(out_of_stock_label);
+      } else {
+        add_to_cart_elm.setAttribute(DATA_PRODUCT_VARIANT_ID, product_obj.variants[0].variant_id);
+      }
+    }
+    /* END: SET PRODUCT ADD_TO_CART OR OUT_OF STOCK */
+
+    /* START: SET PRODUCT VARIANTS_ATTRIBUTE MAPPING */
+    var product_variant_container = product_record_container.querySelector("[" + DATA_PRODUCT_VARIANT_CONTAINER + "]");
+
+    if(product_obj.has_variant) {
+      var variants_attribute_select_template = dom_template.querySelector("[" + DATA_VARIANTS_ATTRIBUTE_CONTAINER + "]");
+      var variants_attribute_select = variants_attribute_select_template.cloneNode(true);
+
+      var product_variants = product_obj.variants;
+      for(var m = 0; m < product_variants.length; m++) {
+        var product_variant = product_variants[m];
+        var attributes_list = [];
+
+        for(var n = 1; n <= 3; n++) {
+          var attribute_option_id_key = ATTRIBUTE_OPTION_ID + n;
+          if(product_variant[attribute_option_id_key] != "") {
+            attributes_list[n-1] = product_variant[attribute_option_id_key];
+          }
+        }
+
+        var variants_attribute_option = document.createElement(OPTION);
+        variants_attribute_option.value = product_variant.variant_id;
+        variants_attribute_option.setAttribute(DATA_ATTRIBUTES, JSON.stringify(attributes_list));
+        variants_attribute_select.appendChild(variants_attribute_option);
+
+      }
+      product_variant_container.appendChild(variants_attribute_select);
+
+    }
+    /* END: SET PRODUCT VARIANTS_ATTRIBUTE MAPPING */
+
+    /* START: SET PRODUCT CART ERROR */
+    var theme_error_cart_elm = product_record_container.querySelector("[" + DATA_THEME_ERROR_CART_ELM + "]");
+    theme_error_cart_elm.setAttribute(DATA_THEME_ERROR, THEME_ERROR_MESSAGE_+product_obj.product_id);
+    /* END: SET PRODUCT CART ERROR */
+
+    /* START: SET PRODUCT ATTRIBUTES */
+    for (var j = 1; j <= 3; j++) {
+      var attribute_id = ATTRIBUTE + j;
+      var attribute_obj = product_obj[attribute_id];
+
+      if(typeof attribute_obj.type != "undefined") {
+        var attribute_options = attribute_obj.options;
+
+        if (attribute_obj.type == 'colour') {
+          /* START: SET PRODUCT ATTRIBUTES - COLOR */
+          var attribute_color_template_container = dom_template.querySelector("[" + DATA_ATTRIBUTE_COLOR_CONTAINER + "]");
+          var attribute_color_container = attribute_color_template_container.cloneNode(true);
+          attribute_color_container.setAttribute(DATA_ATTRIBUTE_NAME, attribute_obj.name);
+          for(var k = 0; k < attribute_options.length; k++) {
+            var attribute_color_template_record = dom_template.querySelector("[" + DATA_ATTRIBUTE_COLOR_RECORD + "]");
+            var attribute_color_record = attribute_color_template_record.cloneNode(true);
+
+            var attribute_option_elm = attribute_color_record.querySelector("[" + DATA_ATTRIBUTE_OPTION + "]");
+            attribute_option_elm.name = attribute_obj.id;
+            attribute_option_elm.value = attribute_options[k].option_id;
+            attribute_option_elm.setAttribute(DATA_TEXT, attribute_options[k].option_name);
+            var color_label_elm = attribute_color_record.querySelector("[" + DATA_THEME_COLOR_LABEL + "]");
+            color_label_elm.style.background = attribute_options[k].option_data;
+
+            attribute_color_container.appendChild(attribute_color_record);
+          }
+          product_variant_container.appendChild(attribute_color_container);
+          /* END: SET PRODUCT ATTRIBUTES - COLOR */
+        } else {
+          /* START: SET PRODUCT ATTRIBUTES - SELECT */
+          var attribute_select_template_container = dom_template.querySelector("[" + DATA_ATTRIBUTE_SELECT_CONTAINER + "]");
+          var attribute_select_container = attribute_select_template_container.cloneNode(true);
+          attribute_select_container.setAttribute(DATA_ATTRIBUTE_NAME, attribute_obj.name);
+          for(var k = 0; k < attribute_options.length; k++) {
+
+            if(k == 0) {
+              var attribute_select_option_default = document.createElement(OPTION);
+              attribute_select_option_default.value = "-1";
+              setInnerHTMLForElement(attribute_select_option_default, SELECT + " " + attribute_obj.name);
+              attribute_select_container.appendChild(attribute_select_option_default);
+            }
+
+            var attribute_select_option = document.createElement(OPTION);
+            attribute_select_option.value = attribute_options[k].option_id;
+            setInnerHTMLForElement(attribute_select_option, attribute_options[k].option_name);
+            attribute_select_option.setAttribute(DATA_ATTRIBUTE_OPTION, EMPTY);
+            attribute_select_container.appendChild(attribute_select_option);
+          }
+          product_variant_container.appendChild(attribute_select_container);
+          /* END: SET PRODUCT ATTRIBUTES - SELECT */
+        }
+
+        /* START: SET PRODUCT ATTRIBUTE ERROR CONTAINER */
+        var theme_error_variants_elm_template = dom_template.querySelector("[" + DATA_THEME_ERROR_VARIANT_ELM + "]");
+        var theme_error_variants_elm = theme_error_variants_elm_template.cloneNode(true);
+        theme_error_variants_elm.setAttribute(DATA_THEME_ERROR_SELECT_FLAG, product_obj.product_id);
+        theme_error_variants_elm.setAttribute(DATA_THEME_ERROR_SELECT, attribute_obj.name + "" + product_obj.product_id);
+        theme_error_variants_elm.setAttribute(DATA_THEME_VARIANT_ERROR, THEME_DATA_ERROR_ + attribute_obj.name);
+        theme_error_variants_elm.innerText = SELECT + " " + attribute_obj.name;
+        product_variant_container.appendChild(theme_error_variants_elm);
+        /* END: SET PRODUCT ATTRIBUTE ERROR CONTAINER */
+
+      }
+    }
+    /* END: SET PRODUCT ATTRIBUTES */
+
+
+
+    product_list_container.appendChild(product_record_container);
+  }
+
+  function getTotalProductsCountBasedOnSearchTerm(product_search_term, page_number) {
+    $X.get({
+      url: "/zos-api/products?search_text="+product_search_term+"&per_page=200&page="+page_number,
+      args: {product_search_term: product_search_term},
+      handler: getTotalProductsSearchHandler
+    });
+  }
+
+  function getTotalProductsSearchHandler(args) {
+    var res = JSON.parse(this.responseText);
+    var products_list = res.products;
+    var page_context = res.page_context;
+    var page_context_has_more_page = page_context.has_more_page;
+    if(page_context_has_more_page) {
+      var product_search_term = args.product_search_term;
+      page_number += 1;
+      getTotalProductsCountBasedOnSearchTerm(product_search_term, page_number);
+    } else {
+      var page = page_context.page;
+      var total_products_count = 0;
+      total_products_count += (page-1)*200;
+      total_products_count += products_list.length;
+      var pagination_total_pages_elm = document.getElementById(PAGINATION_TOTAL_PAGES);
+      pagination_total_pages_elm.innerText = Math.ceil(total_products_count/20);
+    }
+  }
+
+  function getTotalProductsCountBasedOnCategory(product_category, page_number) {
+    $X.get({
+      url: "/zos-api/categories/"+product_category+"?include_products=true&per_page=200&page="+current_page_number,
+      args: {product_category: product_category},
+      handler: getTotalProductsCategoryHandler
+    });
+  }
+
+  function getTotalProductsCategoryHandler(args) {
+    var res = JSON.parse(this.responseText);
+    var products_list = res.category.products;
+    var page_context = res.category.page_context;
+    var page_context_has_more_page = page_context.has_more_page;
+    if(page_context_has_more_page) {
+      var product_category = args.product_category;
+      page_number += 1;
+      getTotalProductsCountBasedOnCategory(product_category, page_number);
+    } else {
+      var page = page_context.page;
+      var total_products_count = 0;
+      total_products_count += (page-1)*200;
+      total_products_count += products_list.length;
+      var pagination_total_pages_elm = document.getElementById(PAGINATION_TOTAL_PAGES);
+      pagination_total_pages_elm.innerText = Math.ceil(total_products_count/20);
+    }
+  }
+
+  /* END: PRODUCT LIST METHODS */
+
+
+
+  /* START: CART METHODS */
+
+    function isCookieEnabled() {
+      var cookieEnabled = (navigator.cookieEnabled) ? true : false;
+      if(typeof navigator.cookieEnabled == "undefined" && !cookieEnabled) {
+        document.cookie = "storecookie";
+        cookieEnabled = (document.cookie.indexOf("storecookie") != -1) ? true : false;
+      }
+      return cookieEnabled;
+    }
+
+    function _testQuantity(quantityElement, targetContainer) {
+  		if(!quantityElement) {
+  			return true;
+  		}
+  		var quantity = quantityElement.value;
+  		var numberPattern = /^\d*.?\d*$/;
+  		var condition = !numberPattern.test(quantity);
+  		if(!condition) {
+  			condition = quantity.length == 0 || Number(quantity) == 0;
+  		}
+      if(!condition) {
+        condition = (quantity % 1) != 0;
+      }
+      var productId = (targetContainer && targetContainer!="") ? targetContainer.getAttribute("data-zs-product-id") : ""; // No I18N
+  		if(condition) {
+  			var invalidProductQuantityEvent = new CustomEvent("zp-event-invalid-product-quantity", { // No I18N
+  				detail: {
+  					quantity: quantity,
+  					productId: productId,
+  					quantityElement: quantityElement,
+  					target: targetContainer,
+  					view: window.zs_view || "store_page" // No I18N
+  				}
+  			});
+  			document.dispatchEvent(invalidProductQuantityEvent);
+  			return false;
+  		}
+  		return true;
+  	}
+
+    function _dispatch(event, data) {
+  		$E.dispatch(document, event, data);
+  	}
+
+    function getUrlVars() {
+      var vars = {};
+      var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+        vars[key] = value;
+      });
+      return vars;
+  	}
+
+    function updateCartSpanElement(cartCount) {
+  	    var viewCartCountElem = document.querySelectorAll('[data-zs-view-cart-count]')[0];
+  	    if(viewCartCountElem) {
+          viewCartCountElem.innerText = cartCount;
+          viewCartCountElem.style.visibility = (cartCount == 0) ? "hidden" : "visible";
+        }
+  	}
+
+    function _deployCartCountEvent(cartCount) {
+      var cartCountEvent = new CustomEvent("zp-event-cart-count", { // No I18N
+        detail: {
+          cart_count: cartCount,
+          view: window.zs_view || "store_page" // No I18N
+        }
+      });
+      document.dispatchEvent(cartCountEvent);
+    }
+
+  	function getUrlParam(parameter, defaultvalue){
+      var urlparameter = defaultvalue;
+      if(window.location.href.indexOf(parameter) > -1){
+        urlparameter = getUrlVars()[parameter];
+      }
+      return urlparameter;
+  	}
+
+    function customAddProductToCart() {
+      if(!isCookieEnabled()) {
+  			return;
+  		}
+      var addToCartButton = event.currentTarget;
+  		var productVariantId = addToCartButton.getAttribute('data-zs-product-variant-id'); // No I18N
+  		var targetContainer = getTargetContainer(addToCartButton);
+  		var productId = (targetContainer && targetContainer!="") ? targetContainer.getAttribute("data-zs-product-id") : ""; // No I18N
+  		var quantityElement;
+      if(targetContainer == addToCartButton) {
+  			// custom template [old]
+  			quantityElement = document.querySelector("[data-zs-quantity][data-zs-product-id='" + productId + "']"); // No I18N
+  		} else if(targetContainer && targetContainer!="") {
+  			// new template
+      	quantityElement = targetContainer.querySelector("[data-zs-quantity]"); // No I18N
+  		}
+      var quantity = 1;
+      if(quantityElement) {
+          quantity = quantityElement.value;
+      }
+  		if(productVariantId === "") {
+  			var addToCartWithInvalidVariant = new CustomEvent("zp-event-add-to-cart-invalid-variant", { // No I18N
+  				detail: {
+  					target: addToCartButton,
+  					productId: productId,
+  					view: window.zs_view || "store_page" // No I18N
+  				}
+  			});
+  			document.dispatchEvent(addToCartWithInvalidVariant);
+  			return;
+  		}
+      if(!_testQuantity(quantityElement, targetContainer)) {
+  			return;
+  		}
+
+      var variantCustomFields = custom_field.getCartCustomFields(productVariantId);
+  		if(variantCustomFields.errors.length > 0) {
+  			_dispatch(ZS_EVENT_CUSTOM_FIELD_VALIDATION_ERROR, {
+  				'custom_fields'       : variantCustomFields.custom_field_list, //NO I18N
+  				'error_custom_fields' : variantCustomFields.errors //NO I18N
+  			});
+  			return;
+  		} else {
+  			//for clear custom fields error message
+  			_dispatch(ZS_EVENT_CUSTOM_FIELD_VALIDATION_ERROR, {
+  				'custom_fields'       : variantCustomFields.custom_field_list //NO I18N
+  			});
+  		}
+
+      var addToCartLoadingEvent = new CustomEvent("zp-event-add-to-cart-loading", { // No I18N
+  			detail: {
+  				target: addToCartButton,
+          productId: productId,
+  				productVariantId: productVariantId,
+  				view: window.zs_view || "store_page" // No I18N
+  			}
+  		});
+      document.dispatchEvent(addToCartLoadingEvent);
+  		$E.unbind(addToCartButton, "click", customAddProductToCart); // No I18N
+  		var params = {
+  			product_variant_id: productVariantId,
+  			quantity		  : quantity,
+  			custom_fields     : variantCustomFields.custom_fields_value
+  		};
+
+  		var cart_id = getUrlParam("cart_id", "");// No I18N
+  		if(cart_id != ""){
+  			params.cart_id = cart_id;
+  		}
+
+      /* START: CLOSE DROP-DOWN MODAL OF SUCCESS & FAILURE */
+      closemessage();
+      /* END: CLOSE DROP-DOWN MODAL OF SUCCESS & FAILURE */
+
+      $X.post({
+  			url: '/storefront/api/v1/cart', // No I18N
+  			bodyJSON: params,
+  			headers: zsUtils.getCSRFHeader(),
+  			args: {
+  				button: addToCartButton
+  			},
+  			handler: function(args) {
+  				var res = JSON.parse(this.responseText);
+  				if ((res.payload && res.payload.items) || (res.cart_details && res.cart_details.items) ) {
+  					var cartInfo = (res.payload) ? res.payload : res.cart_details;
+  					updateCartSpanElement(cartInfo.items.length);
+  		    	_deployCartCountEvent(cartInfo.items.length);
+
+  					var addToCartSuccessEvent = new CustomEvent("zp-event-add-to-cart-success", { // No I18N
+  						detail: {
+  							cart: cartInfo,
+  			        productId: productId,
+  							target: args.button,
+  							view: window.zs_view || "store_page" // No I18N
+  						}
+  					});
+  					document.dispatchEvent(addToCartSuccessEvent);
+  				} else {
+  					//if template have not custom fields
+  					if(res.error && res.error.code == CONST.BOOKS_API_RESPONSE.STOREFRONT_CUSTOM_FIELD_ERROR) {
+  						res.cart_details = res.error;
+  					}
+
+  					var addToCartFailureEvent = new CustomEvent("zp-event-add-to-cart-failure", { // No I18N
+  						detail: {
+  							response: res,
+  			        productId: productId,
+  							target: args.button,
+  							view: window.zs_view || "store_page" // No I18N
+  						}
+  					});
+  					document.dispatchEvent(addToCartFailureEvent);
+  				}
+  	      $E.bind(args.button, "click", customAddProductToCart); // No I18N
+  			},
+  			error: {
+  				// below code for future case
+  				handler: function(args) {
+  					var addToCartFailureEvent = new CustomEvent("zp-event-add-to-cart-failure", { // No I18N
+  						detail: {
+  							target: args.button,
+  			        productId: productId,
+  							view: window.zs_view || "store_page" // No I18N
+  						}
+  					});
+  					document.dispatchEvent(addToCartFailureEvent);
+            $E.bind(args.button, "click", customAddProductToCart); // No I18N
+  				},
+  				condition: function() {
+  					return this.status >= 300;
+  				}
+  			}
+  		});
+
+
+
+    }
+
+    /* END: CART METHODS */
+
+  window.addEventListener(QUICK_BUY_EVENT_TYPE.LOAD, quickBuyInit);
+  console.log("Category API:", category_products.length);
+	console.log("Collection API:", collection_products.length);
+ </script>
+<script>
+function increaseCount(btn) {
+    console.log("➕ Increase clicked");
+
+    // Find SAME product block
+    let container = btn.closest(".theme-product-list-quantity-wrapper");
+
+    if (!container) {
+        console.log("❌ Quantity wrapper not found!");
+        return;
+    }
+
+    let qtyInput = container.querySelector(".theme-cart-qty-inc-dec-input");
+
+    if (!qtyInput) {
+        console.log("❌ Qty input missing!");
+        return;
+    }
+
+    let current = parseInt(qtyInput.value || "0");
+    console.log("Current Qty:", current);
+
+    qtyInput.value = current + 1;
+
+    console.log("Updated Qty:", qtyInput.value);
+}
+
+
+function decreaseCount(btn) {
+    console.log("➖ Decrease clicked");
+
+    // Find SAME product block
+    let container = btn.closest(".theme-product-list-quantity-wrapper");
+
+    if (!container) {
+        console.log("❌ Quantity wrapper not found!");
+        return;
+    }
+
+    let qtyInput = container.querySelector(".theme-cart-qty-inc-dec-input");
+
+    if (!qtyInput) {
+        console.log("❌ Qty input missing!");
+        return;
+    }
+
+    let current = parseInt(qtyInput.value || "0");
+    console.log("Current Qty:", current);
+
+    // allow 1 → 0 but STOP at 0
+    if (current > 0) {
+        qtyInput.value = current - 1;
+        console.log("Updated Qty:", qtyInput.value);
+    } else {
+        console.log("⚠️ Already 0 — cannot go below 0");
+    }
+}
+</script>
+
+
+
+
+
+

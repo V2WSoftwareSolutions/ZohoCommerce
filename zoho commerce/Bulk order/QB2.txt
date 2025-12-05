@@ -1,0 +1,57 @@
+<div id="allProductsSnippet">
+   <div class="product-purchase-container">
+      <div class="order-form-head" style="height: 80px;">
+
+        <div class="product-label">
+          <input type="text" name="search_product" id="product-search" value="" placeholder="Search" onkeypress="" class="">
+        </div>
+        <div class="product-label">
+          <select id="product-category-select">
+             <option value="">Select Product Category</option>
+          </select>
+        </div>
+<div style="display: flex;
+    justify-content: center;
+    align-items: center;">
+        <div id="pagination-prev-page" class="product-label product-label-prev-next-no" onclick="paginationPrevElmClick()">
+          <label>&lt;</label>
+        </div>
+        <div id="page-number" class="product-label product-label-prev-next-no product-label-prev-next-noa" >
+          <label id="page-number-elm">1</label>
+        </div>
+        <div id="pagination-next-page" class="product-label product-label-prev-next-no" onclick="paginationNextElmClick()">
+          <label>&gt;</label>
+        </div>
+        <div class="product-label" style="color: #fff;"> Total Pages: <span id="pagination-total-pages">1</span> </div>
+</div>
+      </div>
+      <div class="product-purchase-container-head">
+         <div class="product-label product-label-image">Image</div>
+         <div class="product-label product-label-name">Product Name</div>
+         <div class="product-label product-label-price">Rate</div>
+         <div class="product-label product-label-quantity">Quantity</div>
+         <div class="product-label product-label-quantity">Action</div>
+      </div>
+      <div class="product-purchase-container-body">
+        <div id="product-list-container" class="product-collection-container toggle-active">
+            <input type="checkbox" checked class="product-collection-container-head-toggle">
+        </div>
+      </div>
+      <div class="order-form-footer" style="height: 80px;">
+
+<div style="display: flex;
+    justify-content: center;
+    align-items: center;">
+        <div id="pagination-prev-page" class="product-label product-label-prev-next-no" onclick="paginationPrevElmClick()">
+          <label>&lt;</label>
+        </div>
+        <div id="page-number" class="product-label product-label-prev-next-no product-label-prev-next-noa" >
+          <label id="page-number-elm">1</label>
+        </div>
+        <div id="pagination-next-page" class="product-label product-label-prev-next-no" onclick="paginationNextElmClick()">
+          <label>&gt;</label>
+        </div>
+</div>
+      </div>
+   </div>
+</div>
