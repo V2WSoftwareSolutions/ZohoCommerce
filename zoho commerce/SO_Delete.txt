@@ -1,0 +1,19 @@
+var headerParams = {};
+headerParams["X-com-zoho-store-organizationid"]= app.data.books_org_id;//No I18N
+headerParams["X-ZB-SOURCE"]="zbclient";//No I18N
+headerParams["X-ZOHO-Include-Formatted"]=true;//No I18N 
+
+
+var soid = location.pathname.replace("/zstore/orders/detail/", "")
+
+var reg = new RegExp('^[0-9]+$');
+if(reg.test(soid)) {
+    $X.del({
+        url:"/zos/api/v1/salesorders/"+ soid +"?force_delete_subrecords=true",//No I18N
+        headers:headerParams,
+        handler:function(){
+            var res = JSON.parse(this.responseText);
+            console.log(res);
+        }
+    });
+}

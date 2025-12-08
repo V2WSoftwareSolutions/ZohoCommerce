@@ -1,0 +1,108 @@
+<script>
+(function () {
+  console.log("🧮 Case-pack message script loaded");
+
+  // ✅ Plain text message (NO BOX, NO BACKGROUND)
+  const MESSAGE_TEXT = `
+  <div style="
+    margin-top: 8px;
+    display: inline-block;
+    background: #FFF4F4;
+    border: 1px solid #F1B0B0;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: #D93025;
+    font-size: 13px;
+    line-height: 1.4;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+  ">
+    This is the minimum order quantity for the selected pack size, so the quantity cannot be reduced.
+  </div>
+`;
+
+
+  function getVariantInfo(cartRow) {
+    const infoUl = cartRow.querySelector(".theme-cart-item-info ul");
+    let hasVariants = false;
+    let caseQty = 1;
+
+    if (!infoUl) return { hasVariants, caseQty };
+
+    infoUl.querySelectorAll("li").forEach((li) => {
+      const text = li.textContent.trim().toLowerCase();
+
+      if (text.includes("has variants")) {
+        const span = li.querySelector("span");
+        if (span && span.textContent.trim().toLowerCase() === "true") {
+          hasVariants = true;
+        }
+      }
+
+      if (text.includes("case quantity")) {
+        const span = li.querySelector("span");
+        if (span) {
+          const v = parseInt(span.textContent.trim(), 10);
+          if (!isNaN(v)) caseQty = v;
+        }
+      }
+    });
+
+    return { hasVariants, caseQty };
+  }
+
+  function updateMessageForRow(cartRow) {
+    const qtyInput = cartRow.querySelector("input[data-zs-quantity]");
+    if (!qtyInput) return;
+
+    const quantity = parseInt(qtyInput.value, 10) || 0;
+    const { hasVariants, caseQty } = getVariantInfo(cartRow);
+    const shouldShow = hasVariants && quantity === caseQty;
+
+    let msgEl = cartRow.querySelector(".case-pack-msg");
+
+    if (shouldShow) {
+      if (!msgEl) {
+        msgEl = document.createElement("div");
+        msgEl.className = "case-pack-msg";
+        msgEl.innerHTML = MESSAGE_TEXT;
+
+        const infoDiv = cartRow.querySelector(".theme-cart-item-info");
+        if (infoDiv) infoDiv.appendChild(msgEl);
+      }
+    } else {
+      if (msgEl) msgEl.remove();
+    }
+  }
+
+  function refreshAllRows() {
+    document
+      .querySelectorAll(".theme-cart-table-row")
+      .forEach(updateMessageForRow);
+  }
+
+  function initCasePackMessage() {
+    const rows = document.querySelectorAll(".theme-cart-table-row");
+    if (!rows.length) {
+      setTimeout(initCasePackMessage, 200);
+      return;
+    }
+
+    refreshAllRows();
+
+    document.addEventListener("input", function (e) {
+      if (e.target.matches("input[data-zs-quantity]")) {
+        refreshAllRows();
+      }
+    });
+
+    document.addEventListener("click", function (e) {
+      if (e.target.closest(".theme-cart-table-row")) {
+        setTimeout(refreshAllRows, 60);
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", initCasePackMessage);
+})();
+</script>
